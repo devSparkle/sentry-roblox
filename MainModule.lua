@@ -268,6 +268,18 @@ function SDK:CaptureException(Exception, Stacktrace, Origin: LuaSourceContainer)
 	return self:CaptureEvent(Event)
 end
 
+function SDK:ConfigureScope(Callback)
+	Callback(self.Scope)
+end
+
+function SDK:New()
+	local self = setmetatable({}, Hub)
+	
+	self.Options = table.clone(self.Options or {})
+	
+	return self
+end
+
 function SDK:Init(Options: HubOptions?)
 	if RunService:IsClient() then
 		if not Options or Options.AutoErrorTracking ~= false then
@@ -346,21 +358,34 @@ function SDK:Init(Options: HubOptions?)
 				return BlockPlayer(Player)
 			end
 			
-			if CallType == "Exception" then
+			local UserHub = self:New()
+			UserHub:ConfigureScope(function(Scope)
+				Scope.logger = "client"
+				Scope.user = {
+					id = Player.UserId,
+					name = Player.Name,
+					
+					geo = {
+						country_code = string.split(Player.LocaleId, "-")[2]
+					}
+				}
+			end)
+			
+			if CallType == "Message" then
 				local Message, Level = ...
 				
 				if type(Message) ~= "string" then return BlockPlayer(Player) end
 				if type(Level) ~= "string" then return BlockPlayer(Player) end
 				
-				self:CaptureMessage(Message, Level)
-			elseif CallType == "Message" then
+				UserHub:CaptureMessage(Message, Level)
+			elseif CallType == "Exception" then
 				local Exception, Stacktrace, Origin = ...
 				
 				if type(Exception) ~= "string" then return BlockPlayer(Player) end
 				if Stacktrace and type(Stacktrace) ~= "string" then return BlockPlayer(Player) end
 				if Origin and type(Origin) ~= "string" then return BlockPlayer(Player) end
 				
-				self:CaptureException(Exception, Stacktrace, Origin)
+				UserHub:CaptureException(Exception, Stacktrace, Origin)
 			end
 		end)
 	end
