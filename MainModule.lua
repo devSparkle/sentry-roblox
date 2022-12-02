@@ -2,8 +2,11 @@
 --// Initialization
 
 local RunService = game:GetService("RunService")
+local LogService = game:GetService("LogService")
 local HttpService = game:GetService("HttpService")
 local PlayerService = game:GetService("Players")
+local ScriptContext = game:GetService("ScriptContext")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local SDK = {}
 local Hub = {__index = SDK}
@@ -76,8 +79,13 @@ type EventPayload = {
 }
 
 type HubOptions = {
-	DSN: string,
+	DSN: string?,
 	debug: boolean?,
+	
+	AutoTrackClient: boolean?,
+	AutoErrorTracking: boolean?,
+	AutoWarningTracking: boolean?,
+--	AutoSessionTracking: boolean?,
 }
 
 --// Variables
@@ -89,6 +97,9 @@ local SDK_INTERFACE = {
 
 local SENTRY_PROTOCOL_VERSION = 7
 local SENTRY_CLIENT = string.format("%s/%s", SDK_INTERFACE.name, SDK_INTERFACE.version)
+
+local CLIENT_RELAY_NAME = "SentryClientRelay"
+local CLIENT_RELAY_PARENT = ReplicatedStorage
 
 --// Functions
 
@@ -173,6 +184,14 @@ local function AggregateDictionaries(...)
 	return Aggregate
 end
 
+local function DispatchToServer(...)
+	local RemoteEvent = CLIENT_RELAY_PARENT:FindFirstChild(CLIENT_RELAY_NAME):: RemoteEvent
+	
+	if RemoteEvent then
+		RemoteEvent:FireServer(...)
+	end
+end
+
 function SDK:CaptureEvent(Event: EventPayload)
 	if not self.BaseUrl then return end
 	if not Event then return end
@@ -187,12 +206,11 @@ function SDK:CaptureEvent(Event: EventPayload)
 		}, Event)
 		
 		local EncodeSuccess, EncodedPayload = pcall(HttpService.JSONEncode, HttpService, Payload)
-		
 		if not EncodeSuccess then
-			Close("Failed to encode Sentry payload, exited with error:", EncodedPayload)
+			Close(self, "Failed to encode Sentry payload, exited with error:", EncodedPayload)
 		end
 		
-		local RequestSuccess, RequestResult = pcall(HttpService.RequestAsync, HttpService, {
+		local Request = {
 			Url = self.BaseUrl .. "/store/",
 			Method = "POST",
 			Headers = {
@@ -201,16 +219,21 @@ function SDK:CaptureEvent(Event: EventPayload)
 			},
 			
 			Body = EncodedPayload,
-		})
+		}
 		
+		local RequestSuccess, RequestResult = pcall(HttpService.RequestAsync, HttpService, Request)
 		if not RequestSuccess then
-			Close("RequestAsync failed, exited with error:", RequestResult)
+			Close(self, "RequestAsync failed, exited with error:", RequestResult)
 		end
 	end)
 end
 
 function SDK:CaptureMessage(Message: string, Level: EventLevel?)
-	return SDK:CaptureEvent{
+	if RunService:IsClient() then
+		return DispatchToServer("Message", Message, Level)
+	end
+	
+	return self:CaptureEvent{
 		level = Level or "info",
 		message = {
 			message = Message
@@ -219,6 +242,10 @@ function SDK:CaptureMessage(Message: string, Level: EventLevel?)
 end
 
 function SDK:CaptureException(Exception, Stacktrace, Origin: LuaSourceContainer)
+	if RunService:IsClient() then
+		return DispatchToServer("Exception", Exception, Stacktrace, Origin)
+	end
+	
 	local Frames = ConvertStacktraceToFrames(Stacktrace or debug.traceback())
 	local Event: EventPayload = {
 		exception = {
@@ -238,10 +265,31 @@ function SDK:CaptureException(Exception, Stacktrace, Origin: LuaSourceContainer)
 		}}
 	end
 	
-	return SDK:CaptureEvent(Event)
+	return self:CaptureEvent(Event)
 end
 
-function SDK:Init(Options: HubOptions)
+function SDK:Init(Options: HubOptions?)
+	if RunService:IsClient() then
+		if not Options or Options.AutoErrorTracking ~= false then
+			ScriptContext.Error:Connect(function(Message, StackTrace, Origin)
+				self:CaptureException(string.match(Message, ":%d+: (.+)"), StackTrace, Origin)
+			end)
+		end
+		
+		if not Options or Options.AutoWarningTracking ~= false then
+			LogService.MessageOut:Connect(function(Message, MessageType)
+				if MessageType == Enum.MessageType.MessageWarning then
+					self:CaptureMessage(Message, "warning")
+				end
+			end)
+		end
+		
+		return
+	end
+	
+	assert(Options, "Init was called without Options.")
+	assert(Options.DSN, "Init was called without a DSN.")
+	
 	local Scheme, PublicKey, Authority, ProjectId = string.match(Options.DSN, "^([^:]+)://([^:]+)@([^/]+)/(.+)$")
 	
 	assert(Scheme, "Invalid Sentry DSN: Scheme not found.")
@@ -266,6 +314,56 @@ function SDK:Init(Options: HubOptions)
 		environment = self.Options.Environment or (if RunService:IsStudio() then "studio" else "live"),
 		dist = tostring(game.PlaceVersion),
 	}
+	
+	if self.Options.AutoErrorTracking ~= false then
+		ScriptContext.Error:Connect(function(Message, StackTrace, Origin)
+			self:CaptureException(string.match(Message, ":%d+: (.+)"), StackTrace, Origin)
+		end)
+	end
+	
+	if self.Options.AutoWarningTracking ~= false then
+		LogService.MessageOut:Connect(function(Message, MessageType)
+			if MessageType == Enum.MessageType.MessageWarning then
+				self:CaptureMessage(Message, "warning")
+			end
+		end)
+	end
+	
+	if self.Options.AutoTrackClient ~= false then
+		local BlockedUsers = {}
+		local function BlockPlayer(Player: Player)
+			BlockedUsers[Player.UserId] = true
+			return
+		end
+		
+		self.ClientRelay = Instance.new("RemoteEvent")
+		self.ClientRelay.Name = CLIENT_RELAY_NAME
+		self.ClientRelay.Parent = CLIENT_RELAY_PARENT
+		
+		self.ClientRelay.OnServerEvent:Connect(function(Player, CallType: unknown, ...: unknown)
+			if BlockedUsers[Player.UserId] then return end
+			if type(CallType) ~= "string" then
+				return BlockPlayer(Player)
+			end
+			
+			if CallType == "Exception" then
+				local Message, Level = ...
+				
+				if type(Message) ~= "string" then return BlockPlayer(Player) end
+				if type(Level) ~= "string" then return BlockPlayer(Player) end
+				
+				self:CaptureMessage(Message, Level)
+			elseif CallType == "Message" then
+				local Exception, Stacktrace, Origin = ...
+				
+				if type(Exception) ~= "string" then return BlockPlayer(Player) end
+				if Stacktrace and type(Stacktrace) ~= "string" then return BlockPlayer(Player) end
+				if Origin and type(Origin) ~= "string" then return BlockPlayer(Player) end
+				
+				self:CaptureException(Exception, Stacktrace, Origin)
+			end
+		end)
+	end
 	
 	return self
 end
