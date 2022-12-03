@@ -279,7 +279,11 @@ function SDK:CaptureException(Exception, Stacktrace, Origin: LuaSourceContainer)
 end
 
 function SDK:ConfigureScope(Callback)
-	Callback(self.Scope)
+	if typeof(Callback) == "function" then
+		Callback(self.Scope)
+	else
+		self.Scope = AggregateDictionaries(self.Scope, Callback)
+	end
 end
 
 function SDK:New()
