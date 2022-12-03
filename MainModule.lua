@@ -334,12 +334,18 @@ function SDK:Init(Options: HubOptions?)
 	self.Options = table.freeze(Options)
 	self.Scope = {
 		server_name = game.JobId,
-		release = self.Options.Release or string.format("%s#%d@%d", game.Name, game.PlaceId, game.PlaceVersion),
+		release = self.Options.Release,
 		
-		logger = (if RunService:IsServer() then "server" else "client"),
-		environment = self.Options.Environment or (if RunService:IsStudio() then "studio" else "live"),
-		dist = tostring(game.PlaceVersion),
+		logger = "server",
+		environment = 
+			self.Options.Environment
+			or (if RunService:IsStudio() then "studio" else "live"),
 	}
+	
+	if game.PlaceVersion then
+		self.Scope.dist = tostring(game.PlaceVersion)
+		self.Scope.release = self.Scope.release or string.format("%s#%d@%d", game.Name, game.PlaceId, game.PlaceVersion)
+	end
 	
 	if self.Options.AutoErrorTracking ~= false then
 		local ExceptionHub = self:New()
