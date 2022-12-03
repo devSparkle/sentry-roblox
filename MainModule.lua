@@ -246,7 +246,8 @@ function SDK:CaptureMessage(Message: string, Level: EventLevel?)
 	return self:CaptureEvent{
 		level = Level or "info",
 		message = {
-			message = RemovePlayerNamesFromString(Message)
+			formatted = RemovePlayerNamesFromString(Message),
+			message = Message,
 		}
 	}
 end
