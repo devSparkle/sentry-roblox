@@ -364,6 +364,86 @@ function SDK:ConfigureScope(Callback)
 	end
 end
 
+function SDK:StartSession()
+	if not self.BaseUrl then return end
+	if not self.Scope.user then return end
+	
+	task.spawn(function()
+		local CurrentTime = DateTime.now()
+		local Payload = HttpService:JSONEncode({
+			sid = self.Scope.user.sid,
+			did = self.Scope.user.id,
+			seq = CurrentTime.UnixTimestampMillis,
+			timestamp = CurrentTime:ToIsoDate(),
+			started = self.Scope.user.started:ToIsoDate(),
+			init = true,
+			
+			status = "ok",
+			
+			attrs = {
+				release = self.Scope.release,
+				environment = self.Scope.environment,
+			}
+		})
+		
+		local Envelope = HttpService:JSONEncode({event_id = HttpService:GenerateGUID(false)})
+		local Item = HttpService:JSONEncode({type = "session", length = #Payload})
+		
+		local Request = {
+			Url = self.BaseUrl .. "/envelope/",
+			Method = "POST",
+			Headers = {
+				["Content-Type"] = "application/x-sentry-envelope",
+				["X-Sentry-Auth"] = self.AuthHeader
+			},
+			
+			Body = table.concat({Envelope, Item, Payload}, "\n"),
+		}
+		
+		local RequestSuccess, RequestResult = pcall(HttpService.RequestAsync, HttpService, Request)
+	end)
+end
+
+function SDK:EndSession()
+	if not self.BaseUrl then return end
+	if not self.Scope.user then return end
+	
+	task.spawn(function()
+		local CurrentTime = DateTime.now()
+		local Payload = HttpService:JSONEncode({
+			sid = self.Scope.user.sid,
+			did = self.Scope.user.id,
+			seq = CurrentTime.UnixTimestampMillis,
+			timestamp = CurrentTime:ToIsoDate(),
+			started = self.Scope.user.started:ToIsoDate(),
+			init = true,
+			
+			status = "exited",
+			
+			attrs = {
+				release = self.Scope.release,
+				environment = self.Scope.environment,
+			}
+		})
+		
+		local Envelope = HttpService:JSONEncode({event_id = HttpService:GenerateGUID(false)})
+		local Item = HttpService:JSONEncode({type = "session", length = #Payload})
+		
+		local Request = {
+			Url = self.BaseUrl .. "/envelope/",
+			Method = "POST",
+			Headers = {
+				["Content-Type"] = "application/x-sentry-envelope",
+				["X-Sentry-Auth"] = self.AuthHeader
+			},
+			
+			Body = table.concat({Envelope, Item, Payload}, "\n"),
+		}
+		
+		local RequestSuccess, RequestResult = pcall(HttpService.RequestAsync, HttpService, Request)
+	end)
+end
+
 function SDK:New()
 	local self = setmetatable({}, Hub)
 	
@@ -484,6 +564,29 @@ function SDK:Init(Options: HubOptions?)
 				
 				UserHub:CaptureException(Exception, Stacktrace, Origin)
 			end
+		end)
+	end
+	
+	if self.Options.AutoTrackSessions ~= false then
+		local UserHubs = {}
+		
+		PlayerService.PlayerAdded:Connect(function(Player)
+			local UserHub = self:New()
+			UserHub:ConfigureScope(function(HubScope)
+				HubScope:SetUser(Player)
+				HubScope.user.sid = HttpService:GenerateGUID(false)
+				HubScope.user.started = DateTime.now()
+			end)
+			
+			UserHubs[Player] = UserHub
+			UserHub:StartSession(Player)
+		end)
+		
+		PlayerService.PlayerRemoving:Connect(function(Player)
+			local UserHub = UserHubs[Player]
+			
+			UserHubs[Player] = nil
+			UserHub:EndSession(Player)
 		end)
 	end
 	
