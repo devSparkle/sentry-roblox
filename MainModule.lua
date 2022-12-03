@@ -46,7 +46,14 @@ type EventPayload = {
 		module: string?,
 		thread_id: string?,
 		
-		mechanism: {}?,
+		mechanism: {
+			data: {[string]: any}?,
+			description: string?,
+			handled: boolean?,
+			help_link: string?,
+			synthetic: boolean?,
+			type: string?,
+		}?,
 		
 		stacktrace: {
 			frames: {},
