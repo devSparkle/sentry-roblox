@@ -285,7 +285,7 @@ function SDK:CaptureEvent(Event: EventPayload)
 	
 	task.spawn(function()
 		local Payload: EventPayload = AggregateDictionaries(self.Scope, {
-			event_id = string.gsub(game.HttpService:GenerateGUID(false), "-", ""),
+			event_id = string.gsub(HttpService:GenerateGUID(false), "-", ""),
 			timestamp = DateTime.now().UnixTimestamp,
 			platform = "other",
 			
