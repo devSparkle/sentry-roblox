@@ -9,7 +9,13 @@ local ScriptContext = game:GetService("ScriptContext")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local SDK = {}
-local Hub = {__index = SDK}
+SDK.__index = SDK
+
+local Hub = setmetatable({}, SDK)
+Hub.__index = Hub
+
+local Scope = {}
+Scope.__index = Scope
 
 type EventLevel = "fatal" | "error" | "warning" | "info" | "debug"
 type EventPayload = {
@@ -30,6 +36,8 @@ type EventPayload = {
 	extra: {[string]: string}?, --/ An arbitrary mapping of additional metadata to store with the event.
 	fingerprint: {string}?, --/ A list of strings used to dictate the deduplication of this event.
 	
+	contexts: {[string]: {[string]: any}}?,
+	
 	sdk: {
 		name: string,
 		version: string,
@@ -41,7 +49,7 @@ type EventPayload = {
 	}?,
 	
 	exception: {
-		type: string,
+		type: string?,
 		value: string?,
 		module: string?,
 		thread_id: string?,
@@ -202,6 +210,75 @@ local function DispatchToServer(...)
 	end
 end
 
+function Scope:SetUser(Player: Player?)
+	if Player then
+		self.user = {
+			id = Player.UserId,
+			name = Player.Name,
+			
+			geo = {
+				country_code = string.split(Player.LocaleId, "-")[2],
+			},
+		}
+	else
+		self.user = nil
+	end
+end
+
+function Scope:SetExtra(Key: string, Value: any)
+	self.extra[Key] = Value
+end
+
+function Scope:SetTag(Key: string, Value: any)
+	self.tags[Key] = Value
+end
+
+function Scope:SetTags(Dictionary: {[string]: any})
+	for Key, Value in next, Dictionary do
+		self.tags[Key] = Value
+	end
+end
+
+function Scope:SetContext(Key: string, Value: any)
+	self.contexts[Key] = Value
+end
+
+function Scope:SetLevel(Level: EventLevel)
+	self.level = Level
+end
+
+function Scope:SetTransaction(TransactionName)
+	rawset(self, "transaction", TransactionName)
+end
+
+function Scope:SetFingerprint(Fingerprint)
+	rawset(self, "fingerprint", Fingerprint)
+end
+
+function Scope:AddEventProcessor(Processor: (EventPayload) -> (EventPayload?))
+	print([[WIP: The function "Scope:AddEventProcessor" is not yet implemented.]])
+end
+
+function Scope:AddErrorProcessor(Processor: (EventPayload) -> (EventPayload?))
+	print([[WIP: The function "Scope:AddErrorProcessor" is not yet implemented.]])
+end
+
+function Scope:Clear()
+	print([[WIP: The function "Scope:Clear" is not yet implemented.]])
+end
+
+function Scope:AddBreadcrumb(Breadcrumb)
+	print([[WIP: The function "Scope:AddBreadcrumb" is not yet implemented.]])
+end
+
+function Scope:ClearBreadcrumbs()
+	print([[WIP: The function "Scope:ClearBreadcrumbs" is not yet implemented.]])
+end
+
+function Scope:ApplyToEvent(Event: EventPayload, MaxBreadcrumbs: number?)
+	print([[WIP: The function "Scope:ApplyToEvent" is not yet implemented.]])
+end
+
 function SDK:CaptureEvent(Event: EventPayload)
 	if not self.BaseUrl then return end
 	if not Event then return end
@@ -333,7 +410,7 @@ function SDK:Init(Options: HubOptions?)
 	)
 	
 	self.Options = table.freeze(Options)
-	self.Scope = {
+	self.Scope = setmetatable({
 		server_name = game.JobId,
 		release = self.Options.Release,
 		
@@ -341,7 +418,7 @@ function SDK:Init(Options: HubOptions?)
 		environment = 
 			self.Options.Environment
 			or (if RunService:IsStudio() then "studio" else "live"),
-	}
+	}, Scope)
 	
 	if game.PlaceVersion then
 		self.Scope.dist = tostring(game.PlaceVersion)
@@ -386,16 +463,9 @@ function SDK:Init(Options: HubOptions?)
 			end
 			
 			local UserHub = self:New()
-			UserHub:ConfigureScope(function(Scope)
-				Scope.logger = "client"
-				Scope.user = {
-					id = Player.UserId,
-					name = Player.Name,
-					
-					geo = {
-						country_code = string.split(Player.LocaleId, "-")[2]
-					}
-				}
+			UserHub:ConfigureScope(function(HubScope)
+				HubScope.logger = "client"
+				HubScope:SetUser(Player)
 			end)
 			
 			if CallType == "Message" then
