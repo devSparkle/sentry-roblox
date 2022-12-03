@@ -342,8 +342,14 @@ function SDK:Init(Options: HubOptions?)
 	}
 	
 	if self.Options.AutoErrorTracking ~= false then
+		local ExceptionHub = self:New()
+		ExceptionHub:ConfigureScope({exception = {mechanism = {
+			type = "autoerrortracking",
+			handled = false,
+		}}})
+		
 		ScriptContext.Error:Connect(function(Message, StackTrace, Origin)
-			self:CaptureException(string.match(Message, ":%d+: (.+)"), StackTrace, Origin)
+			ExceptionHub:CaptureException(string.match(Message, ":%d+: (.+)"), StackTrace, Origin)
 		end)
 	end
 	
