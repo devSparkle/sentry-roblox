@@ -386,7 +386,7 @@ function SDK:Init(Options: HubOptions?)
 				
 				if type(Exception) ~= "string" then return BlockPlayer(Player) end
 				if Stacktrace and type(Stacktrace) ~= "string" then return BlockPlayer(Player) end
-				if Origin and type(Origin) ~= "string" then return BlockPlayer(Player) end
+				if Origin and typeof(Origin) ~= "Instance" then return BlockPlayer(Player) end
 				
 				UserHub:CaptureException(Exception, Stacktrace, Origin)
 			end
