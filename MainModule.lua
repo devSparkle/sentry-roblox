@@ -82,6 +82,9 @@ type HubOptions = {
 	DSN: string?,
 	debug: boolean?,
 	
+	Release: string?,
+	Environment: string?,
+	
 	AutoTrackClient: boolean?,
 	AutoErrorTracking: boolean?,
 	AutoWarningTracking: boolean?,
@@ -320,7 +323,7 @@ function SDK:Init(Options: HubOptions?)
 	self.Options = table.freeze(Options)
 	self.Scope = {
 		server_name = game.JobId,
-		release = string.format("%s#%d@%d", game.Name, game.PlaceId, game.PlaceVersion),
+		release = self.Options.Release or string.format("%s#%d@%d", game.Name, game.PlaceId, game.PlaceVersion),
 		
 		logger = (if RunService:IsServer() then "server" else "client"),
 		environment = self.Options.Environment or (if RunService:IsStudio() then "studio" else "live"),
