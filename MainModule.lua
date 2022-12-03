@@ -239,7 +239,7 @@ function SDK:CaptureMessage(Message: string, Level: EventLevel?)
 	return self:CaptureEvent{
 		level = Level or "info",
 		message = {
-			message = Message
+			message = RemovePlayerNamesFromString(Message)
 		}
 	}
 end
