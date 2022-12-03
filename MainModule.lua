@@ -420,7 +420,7 @@ function SDK:Init(Options: HubOptions?)
 			or (if RunService:IsStudio() then "studio" else "live"),
 	}, Scope)
 	
-	if game.PlaceVersion then
+	if game.PlaceVersion ~= 0 then
 		self.Scope.dist = tostring(game.PlaceVersion)
 		self.Scope.release = self.Scope.release or string.format("%s#%d@%d", game.Name, game.PlaceId, game.PlaceVersion)
 	end
