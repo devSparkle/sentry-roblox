@@ -334,8 +334,6 @@ function SDK:CaptureException(Exception, Stacktrace, Origin: LuaSourceContainer)
 		return DispatchToServer("Exception", Exception, Stacktrace, Origin)
 	end
 	
-	Exception = string.match(Exception, ":%d+: (.+)") or Exception
-	
 	local Frames = ConvertStacktraceToFrames(Stacktrace or debug.traceback())
 	local Event: EventPayload = {
 		exception = {
@@ -378,7 +376,7 @@ function SDK:Init(Options: HubOptions?)
 	if RunService:IsClient() then
 		if not Options or Options.AutoErrorTracking ~= false then
 			ScriptContext.Error:Connect(function(Message, StackTrace, Origin)
-				self:CaptureException(Message, StackTrace, Origin)
+				self:CaptureException(string.match(Message, ":%d+: (.+)"), StackTrace, Origin)
 			end)
 		end
 		
@@ -413,7 +411,7 @@ function SDK:Init(Options: HubOptions?)
 	
 	self.Options = table.freeze(Options)
 	self.Scope = setmetatable({
-		server_name = game.JobId ~= "" and game.JobId or "N/A",
+		server_name = game.JobId,
 		release = self.Options.Release,
 		
 		logger = "server",
@@ -435,7 +433,7 @@ function SDK:Init(Options: HubOptions?)
 		}}})
 		
 		ScriptContext.Error:Connect(function(Message, StackTrace, Origin)
-			ExceptionHub:CaptureException(Message, StackTrace, Origin)
+			ExceptionHub:CaptureException(string.match(Message, ":%d+: (.+)"), StackTrace, Origin)
 		end)
 	end
 	
