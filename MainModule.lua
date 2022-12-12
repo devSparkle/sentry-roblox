@@ -110,7 +110,7 @@ type HubOptions = {
 
 local SDK_INTERFACE = {
 	name = "sentry.roblox.devsparkle",
-	version = "0.1.2",
+	version = "0.1.3",
 }
 
 local SENTRY_PROTOCOL_VERSION = 7
