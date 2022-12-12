@@ -119,6 +119,8 @@ local SENTRY_CLIENT = string.format("%s/%s", SDK_INTERFACE.name, SDK_INTERFACE.v
 local CLIENT_RELAY_NAME = "SentryClientRelay"
 local CLIENT_RELAY_PARENT = ReplicatedStorage
 
+local SCOPE_STATIC_VALUES = {"server_name", "release", "logger", "environment"}
+
 --// Functions
 
 local function Close(self, ...)
@@ -264,7 +266,11 @@ function Scope:AddErrorProcessor(Processor: (EventPayload) -> (EventPayload?))
 end
 
 function Scope:Clear()
-	print([[WIP: The function "Scope:Clear" is not yet implemented.]])
+	for Index in next, self do
+		if not table.find(SCOPE_STATIC_VALUES, Index) then
+			rawset(self, Index, nil)
+		end
+	end
 end
 
 function Scope:AddBreadcrumb(Breadcrumb)
