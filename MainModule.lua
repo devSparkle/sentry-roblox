@@ -106,11 +106,13 @@ type HubOptions = {
 --	AutoSessionTracking: boolean?,
 }
 
+local RATE_LIMIT_UNTIL = 0
+
 --// Variables
 
 local SDK_INTERFACE = {
 	name = "sentry.roblox.devsparkle",
-	version = "0.1.3",
+	version = "0.1.4",
 }
 
 local SENTRY_PROTOCOL_VERSION = 7
@@ -279,7 +281,16 @@ function Scope:ApplyToEvent(Event: EventPayload, MaxBreadcrumbs: number?)
 	print([[WIP: The function "Scope:ApplyToEvent" is not yet implemented.]])
 end
 
+local function DetermineRateLimit(RawTimeout: unknown)
+	local Timeout = tonumber(RawTimeout) or 60
+	--/ The timeout defaults to 60, in case its not provided by sentry, as per sentry's guidelines
+	
+	RATE_LIMIT_UNTIL = (os.clock() + Timeout)
+	--/ os.clock() is used in favour of time(), so that this SDK may be used in studio plugins
+end
+
 function SDK:CaptureEvent(Event: EventPayload)
+	if os.clock() < RATE_LIMIT_UNTIL then return print("RATE LIMITING!") end
 	if not self.BaseUrl then return end
 	if not Event then return end
 	
@@ -311,6 +322,10 @@ function SDK:CaptureEvent(Event: EventPayload)
 		local RequestSuccess, RequestResult = pcall(HttpService.RequestAsync, HttpService, Request)
 		if not RequestSuccess then
 			Close(self, "RequestAsync failed, exited with error:", RequestResult)
+		elseif RequestResult.Headers["X-Sentry-Rate-Limits"] then
+			DetermineRateLimit(RequestResult.Headers["X-Sentry-Rate-Limits"])
+		elseif RequestResult.StatusCode == 429 then
+			DetermineRateLimit(RequestResult.Headers["Retry-After"])
 		end
 	end)
 end
