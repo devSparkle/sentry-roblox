@@ -11,3 +11,15 @@ position = "right"
 [home]
 enabled = true
 includeReadme = false
+
+[[home.features]]
+title = "Reliable"
+description = "The SDK was designed with Roblox developers in mind. Whether you're using it for plugins or to track a game, features were tested with real Roblox environments."
+
+[[home.features]]
+title = "Flexible"
+description = "Supports automatic tracking, stacktraces and desynchronized actor calls."
+
+[[home.features]]
+title = "Familiar"
+description = "Follows the Sentry Unified SDK API Guidelines."
