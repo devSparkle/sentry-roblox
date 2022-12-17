@@ -3,6 +3,10 @@ on: release
 permissions:
   contents: write
 
+concurrency:
+  group: "release"
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
