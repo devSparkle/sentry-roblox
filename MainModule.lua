@@ -8,12 +8,22 @@ local PlayerService = game:GetService("Players")
 local ScriptContext = game:GetService("ScriptContext")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+--[=[
+	@class SDK
+]=]
 local SDK = {}
 SDK.__index = SDK
 
+--[=[
+	@class Hub
+	@ignore
+]=]
 local Hub = setmetatable({}, SDK)
 Hub.__index = Hub
 
+--[=[
+	@class Scope
+]=]
 local Scope = {}
 Scope.__index = Scope
 
@@ -92,6 +102,41 @@ type EventPayload = {
 		details: string?,
 	}}?,
 }
+
+--[=[
+	@within SDK
+	@interface HubOptions
+	
+	.DSN string -- The DSN for the sentry project to send events to
+	.debug boolean? -- Internal debug mode, prints info about the current state of the SDK when set to `true`
+	
+	.Release string? -- Arbitrary release identifier. Usually in the format `GameName@1.2.3`
+	.Environment string? -- Arbitrary environment identifier. Defaults to `studio` or `live` as appropriate.
+	
+	.AutoTrackClient boolean? -- When not explicitly set to false, Sentry will automatically monitor the client-side console.
+	.AutoErrorTracking boolean? -- When not explicitly set to false, Sentry will automatically monitor and report console errors.
+	.AutoWarningTracking boolean? -- When not explicitly set to false, Sentry will automatically monitor and report console warnings.
+]=]
+--[=[
+@within SDK
+@prop Release string?
+
+:::warning
+ This property must be set in [SDK:Init] through the [HubOptions] table.
+:::
+
+An arbitrary release identifier, used to determine the current version of the game.
+This can be very useful to track which versions of the game are currently affected.
+
+Should be in the format `GameName@1.2.3` using Semantic Versioning; although this
+is not strictly enforced by the SDK or Sentry. The version must be unique in a sentry
+organization.
+
+:::info
+Using the format `GameName@1.2.3` is recommended, as sentry will treat everything
+after the `@` as the version number, and automatically adapt their UI to this format.
+:::
+]=]
 
 type HubOptions = {
 	DSN: string?,
@@ -389,6 +434,9 @@ function SDK:New()
 	return self
 end
 
+--[=[
+	
+]=]
 function SDK:Init(Options: HubOptions?)
 	if RunService:IsClient() then
 		if not Options or Options.AutoErrorTracking ~= false then
