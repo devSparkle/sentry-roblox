@@ -1,3 +1,5 @@
+classOrder = ["SDK", "Scope"]
+
 [docusaurus]
 tagline = "Sentry SDK implementation for Roblox"
 
