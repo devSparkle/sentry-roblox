@@ -1,3 +1,6 @@
+name: Build and Publish Binaries
+run-name: Release binaries for ${{ github.ref_name }} by @${{ github.actor }}
+
 on: release
 
 permissions:

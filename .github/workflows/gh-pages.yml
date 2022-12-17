@@ -1,3 +1,6 @@
+name: Publish Documentation
+run-name: Publish documentation for ${{ github.ref_name }} by @${{ github.actor }}
+
 on: [release, workflow_run]
 
 permissions:
