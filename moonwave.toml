@@ -1,0 +1,11 @@
+[docusaurus]
+tagline = "Sentry SDK implementation for Roblox"
+
+[[navbar.items]]
+href = "https://discord.gg/roblox-api-332692436478590986"
+label = "Discord"
+position = "right"
+
+[home]
+enabled = true
+includeReadme = false
