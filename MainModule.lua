@@ -125,7 +125,7 @@ local CLIENT_RELAY_PARENT = ReplicatedStorage
 
 local function Close(self, ...)
 	if self and self.Options and self.Options.Debug then
-		print("Sentry Debug:",  ...)
+		print("Sentry Debug:", ...)
 	end
 	
 	task.defer(task.cancel, coroutine.running())
