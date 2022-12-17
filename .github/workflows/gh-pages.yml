@@ -1,8 +1,4 @@
-on:
-  push:
-    branches: ["main"]
-    
-  workflow_dispatch:
+on: [release, workflow_run]
 
 permissions:
   contents: read
@@ -15,6 +11,8 @@ concurrency:
 
 jobs:
   deploy:
+    needs: documentation-tests
+    
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
