@@ -15,7 +15,7 @@ jobs:
       - name: Add Foreman tools
         run: |
           echo "[tools]" >> foreman.toml
-          echo "rojo = { source = "rojo-rbx/rojo", version = "7" }" >> foreman.toml
+          echo 'rojo = { source = "rojo-rbx/rojo", version = "7" }' >> foreman.toml
       - name: Setup Foreman
         uses: Roblox/setup-foreman@v1
         with:
