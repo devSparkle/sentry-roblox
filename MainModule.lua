@@ -16,7 +16,7 @@ SDK.__index = SDK
 
 --[=[
 	@class Hub
-	@ignore
+	@private
 ]=]
 local Hub = setmetatable({}, SDK)
 Hub.__index = Hub
@@ -311,6 +311,13 @@ local function DispatchToServer(...)
 	end
 end
 
+--[=[
+	Adds information of the given player to each event sent.
+	Only one user may be associated with a Scope at any given time. Calling this method will override the current user.
+	When no player is provided, any existing player information is removed.
+	
+	The `UserId`, `Name` and country-code of the player is sent.
+]=]
 function Scope:SetUser(Player: Player?)
 	if Player then
 		self.user = {
@@ -326,33 +333,47 @@ function Scope:SetUser(Player: Player?)
 	end
 end
 
+--[=[
+]=]
 function Scope:SetExtra(Key: string, Value: any)
 	self.extra[Key] = Value
 end
 
+--[=[
+]=]
 function Scope:SetTag(Key: string, Value: any)
 	self.tags[Key] = Value
 end
 
+--[=[
+]=]
 function Scope:SetTags(Dictionary: {[string]: any})
 	for Key, Value in next, Dictionary do
 		self.tags[Key] = Value
 	end
 end
 
+--[=[
+]=]
 function Scope:SetContext(Key: string, Value: any)
 	self.contexts[Key] = Value
 end
 
+--[=[
+]=]
 function Scope:SetLevel(Level: EventLevel)
 	self.level = Level
 end
 
-function Scope:SetTransaction(TransactionName)
+--[=[
+]=]
+function Scope:SetTransaction(TransactionName: string)
 	rawset(self, "transaction", TransactionName)
 end
 
-function Scope:SetFingerprint(Fingerprint)
+--[=[
+]=]
+function Scope:SetFingerprint(Fingerprint: {string})
 	rawset(self, "fingerprint", Fingerprint)
 end
 
@@ -388,6 +409,8 @@ local function DetermineRateLimit(RawTimeout: unknown)
 	--/ os.clock() is used in favour of time(), so that this SDK may be used in studio plugins
 end
 
+--[=[
+]=]
 function SDK:CaptureEvent(Event: EventPayload)
 	if os.clock() < RATE_LIMIT_UNTIL then return print("RATE LIMITING!") end
 	if not self.BaseUrl then return end
@@ -429,6 +452,8 @@ function SDK:CaptureEvent(Event: EventPayload)
 	end)
 end
 
+--[=[
+]=]
 function SDK:CaptureMessage(Message: string, Level: EventLevel?)
 	if RunService:IsClient() then
 		return DispatchToServer("Message", Message, Level)
@@ -443,7 +468,9 @@ function SDK:CaptureMessage(Message: string, Level: EventLevel?)
 	}
 end
 
-function SDK:CaptureException(Exception, Stacktrace, Origin: LuaSourceContainer)
+--[=[
+]=]
+function SDK:CaptureException(Exception: string, Stacktrace: string?, Origin: LuaSourceContainer)
 	if RunService:IsClient() then
 		return DispatchToServer("Exception", Exception, Stacktrace, Origin)
 	end
@@ -472,6 +499,9 @@ function SDK:CaptureException(Exception, Stacktrace, Origin: LuaSourceContainer)
 	return self:CaptureEvent(Event)
 end
 
+--[=[
+	@param Callback any
+]=]
 function SDK:ConfigureScope(Callback)
 	if typeof(Callback) == "function" then
 		Callback(self.Scope)
@@ -480,6 +510,9 @@ function SDK:ConfigureScope(Callback)
 	end
 end
 
+--[=[
+	@return Hub
+]=]
 function SDK:New()
 	local self = setmetatable({}, Hub)
 	
@@ -489,7 +522,7 @@ function SDK:New()
 end
 
 --[=[
-	
+	@return SDK
 ]=]
 function SDK:Init(Options: HubOptions?)
 	if RunService:IsClient() then
