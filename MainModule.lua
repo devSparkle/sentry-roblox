@@ -108,15 +108,28 @@ type EventPayload = {
 	@interface HubOptions
 	
 	.DSN string -- The DSN for the sentry project to send events to
-	.debug boolean? -- Internal debug mode, prints info about the current state of the SDK when set to `true`
+	.debug boolean? -- See [SDK.debug] (must press the "Show Private")
 	
-	.Release string? -- Arbitrary release identifier. Usually in the format `GameName@1.2.3`
-	.Environment string? -- Arbitrary environment identifier. Defaults to `studio` or `live` as appropriate.
+	.Release string? -- See [SDK.Release]
+	.Environment string? -- See [SDK.Environment]
 	
-	.AutoTrackClient boolean? -- When not explicitly set to false, Sentry will automatically monitor the client-side console.
-	.AutoErrorTracking boolean? -- When not explicitly set to false, Sentry will automatically monitor and report console errors.
-	.AutoWarningTracking boolean? -- When not explicitly set to false, Sentry will automatically monitor and report console warnings.
+	.AutoTrackClient boolean? -- See [SDK.AutoTrackClient]
+	.AutoErrorTracking boolean? -- See [SDK.AutoErrorTracking]
+	.AutoWarningTracking boolean? -- See [SDK.AutoWarningTracking]
 ]=]
+
+--[=[
+@within SDK
+@prop debug boolean?
+@private
+
+:::warning
+ This property must be set in [SDK:Init] through the [HubOptions] table.
+:::
+
+Internal debug mode, prints info about the current state of the SDK when set to `true`
+]=]
+
 --[=[
 @within SDK
 @prop Release string?
@@ -136,6 +149,47 @@ organization.
 Using the format `GameName@1.2.3` is recommended, as sentry will treat everything
 after the `@` as the version number, and automatically adapt their UI to this format.
 :::
+]=]
+--[=[
+@within SDK
+@prop Environment string?
+
+:::warning
+ This property must be set in [SDK:Init] through the [HubOptions] table.
+:::
+
+Arbitrary environment identifier. Defaults to `studio` or `live` as appropriate.
+]=]
+
+--[=[
+@within SDK
+@prop AutoTrackClient boolean?
+
+:::warning
+ This property must be set in [SDK:Init] through the [HubOptions] table.
+:::
+
+When not explicitly set to false, Sentry will automatically monitor the client-side console.
+]=]
+--[=[
+@within SDK
+@prop AutoErrorTracking boolean?
+
+:::warning
+ This property must be set in [SDK:Init] through the [HubOptions] table.
+:::
+
+When not explicitly set to false, Sentry will automatically monitor and report console errors.
+]=]
+--[=[
+@within SDK
+@prop AutoWarningTracking boolean?
+
+:::warning
+ This property must be set in [SDK:Init] through the [HubOptions] table.
+:::
+
+When not explicitly set to false, Sentry will automatically monitor and report console warnings.
 ]=]
 
 type HubOptions = {
