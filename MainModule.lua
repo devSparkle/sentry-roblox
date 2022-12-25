@@ -416,7 +416,6 @@ function SDK:EndSession()
 			seq = CurrentTime.UnixTimestampMillis,
 			timestamp = CurrentTime:ToIsoDate(),
 			started = self.Scope.user.started:ToIsoDate(),
-			init = true,
 			
 			status = "exited",
 			
