@@ -579,14 +579,14 @@ function SDK:Init(Options: HubOptions?)
 			end)
 			
 			UserHubs[Player] = UserHub
-			UserHub:StartSession(Player)
+			UserHub:StartSession()
 		end)
 		
 		PlayerService.PlayerRemoving:Connect(function(Player)
 			local UserHub = UserHubs[Player]
 			
 			UserHubs[Player] = nil
-			UserHub:EndSession(Player)
+			UserHub:EndSession()
 		end)
 	end
 	
