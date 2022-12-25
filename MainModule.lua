@@ -372,7 +372,7 @@ function SDK:StartSession()
 		local CurrentTime = DateTime.now()
 		local Payload = HttpService:JSONEncode({
 			sid = self.Scope.user.sid,
-			did = self.Scope.user.id,
+			did = tostring(self.Scope.user.id),
 			seq = CurrentTime.UnixTimestampMillis,
 			timestamp = CurrentTime:ToIsoDate(),
 			started = self.Scope.user.started:ToIsoDate(),
@@ -412,7 +412,7 @@ function SDK:EndSession()
 		local CurrentTime = DateTime.now()
 		local Payload = HttpService:JSONEncode({
 			sid = self.Scope.user.sid,
-			did = self.Scope.user.id,
+			did = tostring(self.Scope.user.id),
 			seq = CurrentTime.UnixTimestampMillis,
 			timestamp = CurrentTime:ToIsoDate(),
 			started = self.Scope.user.started:ToIsoDate(),
