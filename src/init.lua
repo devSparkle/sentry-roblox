@@ -14,196 +14,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SDK = {}
 SDK.__index = SDK
 
---[=[
-	@class Hub
-	@private
-]=]
-local Hub = setmetatable({}, SDK)
-Hub.__index = Hub
-
---[=[
-	@class Scope
-]=]
-local Scope = {}
-Scope.__index = Scope
-
-type EventLevel = "fatal" | "error" | "warning" | "info" | "debug"
-type EventPayload = {
-	event_id: string?,
-	timestamp: string | number | nil,
-	platform: "other" | nil,
-	
-	level: EventLevel?, --/ The record severity. Defaults to error.
-	logger: string?, --/ The name of the logger which created the record.
-	transaction: string?, --/ The name of the transaction which caused this exception.
-	server_name: string?, --/ Identifies the host from which the event was recorded. Defaults to game.JobId
-	release: string?, --/ The release version of the application. MUST BE UNIQUE ACROSS ORGANIZATION
-	dist: string?, --/ The distribution of the application.
-	
-	tags: {[string]: string}?, --/ A map or list of tags for this event. Each tag must be less than 200 characters.
-	environment: string?, --/ The environment name, such as production or staging.
-	modules: {[string]: string}?, --/ A list of relevant modules and their versions.
-	extra: {[string]: string}?, --/ An arbitrary mapping of additional metadata to store with the event.
-	fingerprint: {string}?, --/ A list of strings used to dictate the deduplication of this event.
-	
-	contexts: {[string]: {[string]: any}}?,
-	
-	sdk: {
-		name: string,
-		version: string,
-		integrations: {string}?,
-		packages: {{
-			name: string,
-			version: string,
-		}}?,
-	}?,
-	
-	exception: {
-		type: string?,
-		value: string?,
-		module: string?,
-		thread_id: string?,
-		
-		mechanism: {
-			data: {[string]: any}?,
-			description: string?,
-			handled: boolean?,
-			help_link: string?,
-			synthetic: boolean?,
-			type: string?,
-		}?,
-		
-		stacktrace: {
-			frames: {},
-			registers: {[string]: string}?,
-		}?,
-	}?,
-	
-	user: {
-		id: number,
-		username: string,
-		
-		geo: {
-			city: string?,
-			country_code: string, --/ Two-letter country code (ISO 3166-1 alpha-2).
-			region: string?,
-		}
-	}?,
-	
-	message: {
-		message: string,
-		formatted: string?,
-		params: {string}?,
-	}?,
-	
-	errors: {{
-		type: string,
-		path: string?,
-		details: string?,
-	}}?,
-}
-
---[=[
-	@within SDK
-	@interface HubOptions
-	
-	.DSN string -- The DSN for the sentry project to send events to
-	.debug boolean? -- See [SDK.debug] (must press the "Show Private")
-	
-	.Release string? -- See [SDK.Release]
-	.Environment string? -- See [SDK.Environment]
-	
-	.AutoTrackClient boolean? -- See [SDK.AutoTrackClient]
-	.AutoErrorTracking boolean? -- See [SDK.AutoErrorTracking]
-	.AutoWarningTracking boolean? -- See [SDK.AutoWarningTracking]
-]=]
-
---[=[
-@within SDK
-@prop debug boolean?
-@private
-
-:::warning
- This property must be set in [SDK:Init] through the [HubOptions] table.
-:::
-
-Internal debug mode, prints info about the current state of the SDK when set to `true`
-]=]
-
---[=[
-@within SDK
-@prop Release string?
-
-:::warning
- This property must be set in [SDK:Init] through the [HubOptions] table.
-:::
-
-An arbitrary release identifier, used to determine the current version of the game.
-This can be very useful to track which versions of the game are currently affected.
-
-Should be in the format `GameName@1.2.3` using Semantic Versioning; although this
-is not strictly enforced by the SDK or Sentry. The version must be unique in a sentry
-organization.
-
-:::info
-Using the format `GameName@1.2.3` is recommended, as sentry will treat everything
-after the `@` as the version number, and automatically adapt their UI to this format.
-:::
-]=]
---[=[
-@within SDK
-@prop Environment string?
-
-:::warning
- This property must be set in [SDK:Init] through the [HubOptions] table.
-:::
-
-Arbitrary environment identifier. Defaults to `studio` or `live` as appropriate.
-]=]
-
---[=[
-@within SDK
-@prop AutoTrackClient boolean?
-
-:::warning
- This property must be set in [SDK:Init] through the [HubOptions] table.
-:::
-
-When not explicitly set to false, Sentry will automatically monitor the client-side console.
-]=]
---[=[
-@within SDK
-@prop AutoErrorTracking boolean?
-
-:::warning
- This property must be set in [SDK:Init] through the [HubOptions] table.
-:::
-
-When not explicitly set to false, Sentry will automatically monitor and report console errors.
-]=]
---[=[
-@within SDK
-@prop AutoWarningTracking boolean?
-
-:::warning
- This property must be set in [SDK:Init] through the [HubOptions] table.
-:::
-
-When not explicitly set to false, Sentry will automatically monitor and report console warnings.
-]=]
-
-type HubOptions = {
-	DSN: string?,
-	debug: boolean?,
-	
-	Release: string?,
-	Environment: string?,
-	
-	AutoTrackClient: boolean?,
-	AutoErrorTracking: boolean?,
-	AutoWarningTracking: boolean?,
---	AutoSessionTracking: boolean?,
-}
+local Types = require(script:WaitForChild("Types"))
+local Scope = require(script:WaitForChild("Classes"):WaitForChild("Scope"))
+local Hub = require(script:WaitForChild("Classes"):WaitForChild("Hub"))
 
 local RATE_LIMIT_UNTIL = 0
 
@@ -311,96 +124,6 @@ local function DispatchToServer(...)
 	end
 end
 
---[=[
-	Adds information of the given player to each event sent.
-	Only one user may be associated with a Scope at any given time. Calling this method will override the current user.
-	When no player is provided, any existing player information is removed.
-	
-	The `UserId`, `Name` and country-code of the player is sent.
-]=]
-function Scope:SetUser(Player: Player?)
-	if Player then
-		self.user = {
-			id = Player.UserId,
-			name = Player.Name,
-			
-			geo = {
-				country_code = string.split(Player.LocaleId, "-")[2],
-			},
-		}
-	else
-		self.user = nil
-	end
-end
-
---[=[
-]=]
-function Scope:SetExtra(Key: string, Value: any)
-	self.extra[Key] = Value
-end
-
---[=[
-]=]
-function Scope:SetTag(Key: string, Value: any)
-	self.tags[Key] = Value
-end
-
---[=[
-]=]
-function Scope:SetTags(Dictionary: {[string]: any})
-	for Key, Value in next, Dictionary do
-		self.tags[Key] = Value
-	end
-end
-
---[=[
-]=]
-function Scope:SetContext(Key: string, Value: any)
-	self.contexts[Key] = Value
-end
-
---[=[
-]=]
-function Scope:SetLevel(Level: EventLevel)
-	self.level = Level
-end
-
---[=[
-]=]
-function Scope:SetTransaction(TransactionName: string)
-	rawset(self, "transaction", TransactionName)
-end
-
---[=[
-]=]
-function Scope:SetFingerprint(Fingerprint: {string})
-	rawset(self, "fingerprint", Fingerprint)
-end
-
-function Scope:AddEventProcessor(Processor: (EventPayload) -> (EventPayload?))
-	print([[WIP: The function "Scope:AddEventProcessor" is not yet implemented.]])
-end
-
-function Scope:AddErrorProcessor(Processor: (EventPayload) -> (EventPayload?))
-	print([[WIP: The function "Scope:AddErrorProcessor" is not yet implemented.]])
-end
-
-function Scope:Clear()
-	print([[WIP: The function "Scope:Clear" is not yet implemented.]])
-end
-
-function Scope:AddBreadcrumb(Breadcrumb)
-	print([[WIP: The function "Scope:AddBreadcrumb" is not yet implemented.]])
-end
-
-function Scope:ClearBreadcrumbs()
-	print([[WIP: The function "Scope:ClearBreadcrumbs" is not yet implemented.]])
-end
-
-function Scope:ApplyToEvent(Event: EventPayload, MaxBreadcrumbs: number?)
-	print([[WIP: The function "Scope:ApplyToEvent" is not yet implemented.]])
-end
-
 local function DetermineRateLimit(RawTimeout: unknown)
 	local Timeout = tonumber(RawTimeout) or 60
 	--/ The timeout defaults to 60, in case its not provided by sentry, as per sentry's guidelines
@@ -411,13 +134,13 @@ end
 
 --[=[
 ]=]
-function SDK:CaptureEvent(Event: EventPayload)
+function SDK:CaptureEvent(Event: Types.EventPayload)
 	if os.clock() < RATE_LIMIT_UNTIL then return print("RATE LIMITING!") end
 	if not self.BaseUrl then return end
 	if not Event then return end
 	
 	task.spawn(function()
-		local Payload: EventPayload = AggregateDictionaries(self.Scope, {
+		local Payload: Types.EventPayload = AggregateDictionaries(self.Scope, {
 			event_id = string.gsub(HttpService:GenerateGUID(false), "-", ""),
 			timestamp = DateTime.now().UnixTimestamp,
 			platform = "other",
@@ -454,7 +177,7 @@ end
 
 --[=[
 ]=]
-function SDK:CaptureMessage(Message: string, Level: EventLevel?)
+function SDK:CaptureMessage(Message: string, Level: Types.EventLevel?)
 	if RunService:IsClient() then
 		return DispatchToServer("Message", Message, Level)
 	end
@@ -478,7 +201,7 @@ function SDK:CaptureException(Exception: string, Stacktrace: string?, Origin: Lu
 	Exception = string.match(Exception, ":%d+: (.+)") or Exception
 	
 	local Frames = ConvertStacktraceToFrames(Stacktrace or debug.traceback())
-	local Event: EventPayload = {
+	local Event: Types.EventPayload = {
 		exception = {
 			type = Exception,
 			module = (if Origin then Origin.Name else nil),
@@ -606,7 +329,7 @@ end
 --[=[
 	@return SDK
 ]=]
-function SDK:Init(Options: HubOptions?)
+function SDK:Init(Options: Types.HubOptions?)
 	if RunService:IsClient() then
 		if not Options or Options.AutoErrorTracking ~= false then
 			ScriptContext.Error:Connect(function(Message, StackTrace, Origin)
