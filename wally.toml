@@ -1,0 +1,9 @@
+[package]
+name = "devsparkle/sentry-roblox"
+description = "An unofficial Roblox SDK for Sentry.io"
+version = "0.1.4"
+license = "BSD-2-Clause"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
