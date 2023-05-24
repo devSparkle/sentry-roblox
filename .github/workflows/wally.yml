@@ -1,0 +1,26 @@
+name: Publish to Wally
+run-name: Publish package to wally for ${{ github.ref_name }} by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+  release:
+
+concurrency:
+  group: "wally-release"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Aftman
+        uses: ok-nick/setup-aftman@v0.3.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login
+        run: wally login --token "${{ secrets.WALLY_AUTH }}"
+      - name: Publish
+        uses: wally publish
