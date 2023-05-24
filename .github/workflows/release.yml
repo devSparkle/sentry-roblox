@@ -19,12 +19,8 @@ jobs:
         uses: actions/checkout@v3
       
       # Build steps
-      - name: Add Foreman tools
-        run: |
-          echo "[tools]" >> foreman.toml
-          echo 'rojo = { source = "rojo-rbx/rojo", version = "7" }' >> foreman.toml
-      - name: Setup Foreman
-        uses: Roblox/setup-foreman@v1
+      - name: Setup Aftman
+        uses: ok-nick/setup-aftman@v0.3.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build
