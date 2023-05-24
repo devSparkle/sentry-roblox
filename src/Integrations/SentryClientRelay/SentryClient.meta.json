@@ -1,5 +1,6 @@
 {
   "properties": {
+    "Disabled": true,
     "RunContext": {
       "Enum": 2
     }
