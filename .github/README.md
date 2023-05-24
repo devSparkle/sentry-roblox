@@ -10,3 +10,4 @@
 - Capture console errors and warnings from the get-go!
 - Add context that helps you find the root problem.
 - Catch client errors that may go unreported.
+- Track player sessions
