@@ -123,8 +123,8 @@ function Hub:BindClient(Client: any?)
 	self.Client = Client
 end
 
-	return Module:BindClient(nil)
 function Hub:UnbindClient()
+	return self:BindClient(nil)
 end
 
 return Hub
