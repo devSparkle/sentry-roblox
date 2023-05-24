@@ -57,6 +57,7 @@ Module.Options = {
 	MaxBreadcrumbs = 100,
 	AttachStacktrace = false,
 	SendDefaultPII = false,
+	IncludeLocalVariables = true,
 	
 	ServerName = game.JobId,
 	
