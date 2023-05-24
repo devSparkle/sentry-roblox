@@ -1,32 +1,12 @@
-# sentry-roblox
-An unofficial Roblox SDK for [Sentry.io](http://sentry.io)
+<div align="center">
+	<a href="https://sentry.io/?utm_source=github&utm_medium=logo" target="_blank">
+		<img src="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" alt="Sentry" width="280" height="84">
+	</a>
+	<p><a href="https://devsparkle.me/sentry-roblox/">View Docs</a></p>
+</div>
 
-## Getting Started
-There are two supported ways to get Sentry quickly up-and-running in your game:
+Sentry is a developer-first error tracking and performance monitoring platform that helps developers see what actually matters, solve quicker, and learn continuously about their applications; and **roblox-sentry** helps you get your game up and running in no time!
 
-### Public Module Install
-This install has the benefit of auto-updating whenever we release bugfixes, security patches and even new features; all without having to update your game or pre-existing code.
-
-*Note:* This method cannot be used from a client script. To forward errors from the client, you must use another installation method.
-
-Create a server-sided script in your game, and paste the following contents:
-```lua
-local SentrySDK = require(11721929587)
-
-SentrySDK:Init({
-	DSN = "<DSN FROM YOUR SENTRY PROJECT>"
-})
-```
-
-### Static Install
-Head over to the [releases tab](http://github.com/devSparkle/sentry-roblox/releases) and download the prepared `.rbxm` file. Insert this file into your game and drag it wherever you'd like to keep your ModuleScripts. It must be parented somewhere that replicates to clients, such as `ReplicatedStorage`, if you intend to monitor client errors too.
-
-Then, require your script by calling its path:
-
-```lua
-local SentrySDK = require(game:GetService("ReplicatedStorage").SentrySDK)
-
-SentrySDK:Init({
-	DSN = "<DSN FROM YOUR SENTRY PROJECT>"
-})
-```
+- Capture console errors and warnings from the get-go!
+- Add context that helps you find the root problem.
+- Catch client errors that may go unreported.
