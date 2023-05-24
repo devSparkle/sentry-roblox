@@ -43,10 +43,6 @@ function Module:CaptureEvent(EncodedPayload)
 		return self:_Relay("CaptureEvent", EncodedPayload)
 	end
 	
-	if true then
-		print("SentrySDK Debug:", "Transporting Event", HttpService:JSONDecode(EncodedPayload))
-	end
-	
 	return pcall(HttpService.RequestAsync, HttpService, {
 		Url = self.BaseUrl .. "/store/",
 		Method = "POST",
@@ -67,10 +63,6 @@ function Module:CaptureEnvelope(Payload)
 	local Payload = HttpService:JSONEncode(Payload)
 	local Envelope = HttpService:JSONEncode({event_id = HttpService:GenerateGUID(false)})
 	local Item = HttpService:JSONEncode({type = "session", length = #Payload})
-	
-	if true then
-		print("Sentry Transporting Envelope", HttpService:JSONDecode(Payload))
-	end
 	
 	return pcall(HttpService.RequestAsync, HttpService, {
 		Url = self.BaseUrl .. "/envelope/",
