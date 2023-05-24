@@ -17,6 +17,8 @@ local HttpService = game:GetService("HttpService")
 ]=]
 local Module = {}
 
+local LimitUntil = 0
+
 --// Functions
 
 function Module:_GetRelay(): RemoteFunction | BindableFunction | nil
@@ -38,12 +40,46 @@ function Module:_Relay(...)
 	end
 end
 
+local function RequestAsync(...)
+	if DateTime.now().UnixTimestamp < LimitUntil then
+		return {
+			Body = "",
+			Headers = {},
+			
+			StatusCode = 429,
+			StatusMessage = "Too Many Requests",
+			Success = false,
+		}
+	end
+	
+	local CallSuccess, Response = pcall(HttpService.RequestAsync, HttpService, ...)
+	local Response = (if CallSuccess then Response else {
+		Body = "",
+		Headers = {},
+		
+		StatusCode = 400,
+		StatusMessage = "InternalError",
+		Success = false,
+	})
+	
+	local RateLimitReset = Response.Headers[string.lower("X-Sentry-Rate-Limit-Reset")]
+	local Remaining = (Response.Headers[string.lower("X-Sentry-Rate-Limit-Remaining")] or math.huge)
+	
+	if RateLimitReset and Remaining then
+		LimitUntil = Remaining
+	elseif Response.StatusCode == 429 then
+		LimitUntil = DateTime.now().UnixTimestamp + (Response.Headers[string.lower("Retry-After")] or 60)
+	end
+	
+	return Response
+end
+
 function Module:CaptureEvent(EncodedPayload)
 	if not self.InitThread then
 		return self:_Relay("CaptureEvent", EncodedPayload)
 	end
 	
-	return pcall(HttpService.RequestAsync, HttpService, {
+	return RequestAsync({
 		Url = self.BaseUrl .. "/store/",
 		Method = "POST",
 		Headers = {
@@ -64,7 +100,7 @@ function Module:CaptureEnvelope(Payload)
 	local Envelope = HttpService:JSONEncode({event_id = HttpService:GenerateGUID(false)})
 	local Item = HttpService:JSONEncode({type = "session", length = #Payload})
 	
-	return pcall(HttpService.RequestAsync, HttpService, {
+	return RequestAsync({
 		Url = self.BaseUrl .. "/envelope/",
 		Method = "POST",
 		Headers = {
