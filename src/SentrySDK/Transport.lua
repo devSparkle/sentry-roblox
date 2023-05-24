@@ -64,11 +64,12 @@ function Module:CaptureEnvelope(Payload)
 		return self:_Relay("CaptureEnvelope", Payload)
 	end
 	
+	local Payload = HttpService:JSONEncode(Payload)
 	local Envelope = HttpService:JSONEncode({event_id = HttpService:GenerateGUID(false)})
 	local Item = HttpService:JSONEncode({type = "session", length = #Payload})
 	
 	if true then
-		print("Sentry Transporting Envelope", HttpService:JSONDecode({Envelope, Item, Payload}))
+		print("Sentry Transporting Envelope", HttpService:JSONDecode(Payload))
 	end
 	
 	return pcall(HttpService.RequestAsync, HttpService, {

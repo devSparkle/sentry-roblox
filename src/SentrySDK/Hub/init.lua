@@ -127,4 +127,43 @@ function Hub:UnbindClient()
 	return self:BindClient(nil)
 end
 
+function Hub:StartSession()
+	local CurrentTime = DateTime.now()
+	
+	return self.Options.Transport:CaptureEnvelope({
+		sid = self.Scope.user.sid,
+		did = tostring(self.Scope.user.id),
+		seq = CurrentTime.UnixTimestampMillis,
+		timestamp = CurrentTime:ToIsoDate(),
+		started = self.Scope.user.started:ToIsoDate(),
+		init = true,
+		
+		status = "ok",
+		
+		attrs = {
+			release = self.Scope.release,
+			environment = self.Scope.environment,
+		}
+	})
+end
+
+function Hub:EndSession()
+	local CurrentTime = DateTime.now()
+	
+	return self.Options.Transport:CaptureEnvelope({
+		sid = self.Scope.user.sid,
+		did = tostring(self.Scope.user.id),
+		seq = CurrentTime.UnixTimestampMillis,
+		timestamp = CurrentTime:ToIsoDate(),
+		started = self.Scope.user.started:ToIsoDate(),
+		
+		status = "exited",
+		
+		attrs = {
+			release = self.Scope.release,
+			environment = self.Scope.environment,
+		}
+	})
+end
+
 return Hub
