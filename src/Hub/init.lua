@@ -32,6 +32,13 @@ function Hub:GetCurrentHub()
 end
 
 function Hub:CaptureEvent(Event: Defaults.Event, Hint)
+	if self.Options then
+		if self.Options.SampleRate == 0 then return end
+		if math.random() > self.Options.SampleRate then
+			return
+		end
+	end
+	
 	return self.Client:CaptureEvent(Event, Hint, self.Scope)
 end
 
