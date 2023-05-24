@@ -1,12 +1,4 @@
 --!nocheck
---[=[
-	A scope holds data that should implicitly be sent with Sentry events.
-	It can hold context data, extra parameters, level overrides, fingerprints etc.
-	
-	The user can modify the current scope (to set extra, tags, current user) through
-	the global function configure_scope. configure_scope takes a callback function
-	to which it passes the current scope.
-]=]
 --// Initialization
 
 local RunService = game:GetService("RunService")
@@ -15,12 +7,22 @@ local LocalizationService = game:GetService("LocalizationService")
 
 local Defaults = require(script.Parent.Parent:WaitForChild("Defaults"))
 
-local Module = {}
-Module.__index = Module
+--[=[
+	@class Scope
+	
+	A scope holds data that should implicitly be sent with Sentry events.
+	It can hold context data, extra parameters, level overrides, fingerprints etc.
+	
+	The user can modify the current scope (to set extra, tags, current user) through
+	the global function configure_scope. configure_scope takes a callback function
+	to which it passes the current scope.
+]=]
+local Scope = {}
+Scope.__index = Scope
 
 --// Functions
 
-function Module._AddGlobalEventProcessor(Function)
+function Scope._AddGlobalEventProcessor(Function)
 	local BindableFunction = Instance.new("BindableFunction")
 	
 	BindableFunction:SetAttribute("RunContext", if RunService:IsClient() then Enum.RunContext.Client else Enum.RunContext.Server)
@@ -29,26 +31,26 @@ function Module._AddGlobalEventProcessor(Function)
 	BindableFunction.Parent = script
 end
 
-function Module.new()
+function Scope.new()
 	return setmetatable({
 		extra = {},
 		contexts = {},
 		tags = {},
 		
 		_event_processors = {},
-	}, Module)
+	}, Scope)
 end
 
 --[=[
 	The reason for this callback-based API is efficiency. If the SDK is disabled, it
 	should not invoke the callback, thus avoiding unnecessary work.
 ]=]
-function Module:ConfigureScope(Callback: (Scope) -> ())
+function Scope:ConfigureScope(Callback: (Scope) -> ())
 	Callback(self)
 end
 
 
-function Module:SetUser(Player: Player | number)
+function Scope:SetUser(Player: Player | number)
 	if typeof(Player) == "Instance" then
 		local IsLocal = (Player == PlayerService.LocalPlayer)
 		local LocaleId = (if IsLocal then LocalizationService.SystemLocaleId else Player.LocaleId)
@@ -76,73 +78,73 @@ function Module:SetUser(Player: Player | number)
 end
 
 
-function Module:SetExtra(Key: string, Value: Defaults.ValidJSONValues)
+function Scope:SetExtra(Key: string, Value: Defaults.ValidJSONValues)
 	self.extra[Key] = Value
 end
 
-function Module:SetExtras(Dictionary: {[string]: Defaults.ValidJSONValues})
+function Scope:SetExtras(Dictionary: {[string]: Defaults.ValidJSONValues})
 	for Key, Value in next, Dictionary do
 		self.extra[Key] = Value
 	end
 end
 
 
-function Module:SetTag(Key: string, Value: Defaults.ValidJSONValues)
+function Scope:SetTag(Key: string, Value: Defaults.ValidJSONValues)
 	self.tags[Key] = Value
 end
 
-function Module:SetTags(Dictionary: {[string]: Defaults.ValidJSONValues})
+function Scope:SetTags(Dictionary: {[string]: Defaults.ValidJSONValues})
 	for Key, Value in next, Dictionary do
 		self.tags[Key] = Value
 	end
 end
 
 
-function Module:SetContext(Key: string, Value: Defaults.ValidJSONValues)
+function Scope:SetContext(Key: string, Value: Defaults.ValidJSONValues)
 	self.contexts[Key] = Value
 end
 
-function Module:SetLevel(Level: Defaults.Level)
+function Scope:SetLevel(Level: Defaults.Level)
 	self.level = Level
 end
 
-function Module:SetTranSaction(TransactionName: string)
+function Scope:SetTranSaction(TransactionName: string)
 	self.transaction = TransactionName
 end
 
-function Module:SetFingerprint(Fingerprint)
+function Scope:SetFingerprint(Fingerprint)
 	self.fingerprint = Fingerprint
 end
 
 
-function Module:AddEventProcessor(Processor)
+function Scope:AddEventProcessor(Processor)
 	table.insert(self._event_processors, Processor)
 end
 
 
-function Module:Clear()
-	local EmptyScope = Module.new()
+function Scope:Clear()
+	local EmptyScope = Scope.new()
 	
 	for Key, Value in next, self do
 		rawset(self, Key, rawget(EmptyScope, Key))
 	end
 end
 
-function Module:Clone()
-	return setmetatable(table.clone(self), Module)
+function Scope:Clone()
+	return setmetatable(table.clone(self), Scope)
 end
 
 
-function Module:AddBreadcrumb(Breadcrumb)
+function Scope:AddBreadcrumb(Breadcrumb)
 	print([[WIP: The function "Scope:AddBreadcrumb" is not yet implemented.]])
 end
 
-function Module:ClearBreadcrumbs()
+function Scope:ClearBreadcrumbs()
 	print([[WIP: The function "Scope:ClearBreadcrumbs" is not yet implemented.]])
 end
 
 
-function Module:ApplyToEvent(Event: Defaults.Event, Hint): Defaults.Event
+function Scope:ApplyToEvent(Event: Defaults.Event, Hint): Defaults.Event
 	local Event = Defaults:AggregateDictionaries(self, Event)
 	local EventProcessors = table.clone(Event._event_processors)
 	Event._event_processors = nil
@@ -188,6 +190,6 @@ function Module:ApplyToEvent(Event: Defaults.Event, Hint): Defaults.Event
 	return Event
 end
 
-export type Scope = typeof(Module.new())
+export type Scope = typeof(Scope.new())
 
-return table.freeze(Module)
+return table.freeze(Scope)

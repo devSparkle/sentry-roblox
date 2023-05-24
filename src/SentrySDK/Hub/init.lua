@@ -1,11 +1,4 @@
 --!nocheck
---[=[
-	The hub consists of a stack of clients and scopes.
-	
-	The SDK maintains two variables: The main hub (a global variable) and the current
-	hub (a variable local to the current thread or execution context, also sometimes
-	known as async local or context local).
-]=]
 --// Initialization
 
 local Defaults = require(script.Parent:WaitForChild("Defaults"))
@@ -13,27 +6,36 @@ local Defaults = require(script.Parent:WaitForChild("Defaults"))
 local ClientClass = require(script:WaitForChild("Client"))
 local ScopeClass = require(script:WaitForChild("Scope"))
 
-local Module = {}
+--[=[
+	@class Hub
+	
+	The hub consists of a stack of clients and scopes.
+	
+	The SDK maintains two variables: The main hub (a global variable) and the current
+	hub (a variable local to the current thread or execution context, also sometimes
+	known as async local or context local).
+]=]
+local Hub = {}
 
 --// Functions
 
-function Module.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?)
-	return setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Module})
+function Hub.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?)
+	return setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Hub})
 end
 
-function Module:Clone()
-	return Module.new(self.Client, self.Scope:Clone())
+function Hub:Clone()
+	return Hub.new(self.Client, self.Scope:Clone())
 end
 
-function Module:GetCurrentHub()
+function Hub:GetCurrentHub()
 	return self
 end
 
-function Module:CaptureEvent(Event: Defaults.Event, Hint)
+function Hub:CaptureEvent(Event: Defaults.Event, Hint)
 	return self.Client:CaptureEvent(Event, Hint, self.Scope)
 end
 
-function Module:CaptureMessage(Message: string, Level: Defaults.Level? )
+function Hub:CaptureMessage(Message: string, Level: Defaults.Level? )
 	return self:CaptureEvent({
 		level = Level or "info",
 		message = {
@@ -43,7 +45,7 @@ function Module:CaptureMessage(Message: string, Level: Defaults.Level? )
 	})
 end
 
-function Module:CaptureException(ErrorMessage: string?)
+function Hub:CaptureException(ErrorMessage: string?)
 	if ErrorMessage == nil then
 		return function(...)
 			return self:CaptureException(...)
@@ -85,7 +87,7 @@ function Module:CaptureException(ErrorMessage: string?)
 end
 
 
-function Module:PushScope()
+function Hub:PushScope()
 	local OldScope = self.Scope
 	local NewScope = setmetatable(Defaults:DeepCopy(OldScope), {__index = OldScope})
 	
@@ -96,33 +98,33 @@ function Module:PushScope()
 	end
 end
 
-function Module:WithScope()
+function Hub:WithScope()
 	
 end
 
-function Module:PopScope()
+function Hub:PopScope()
 	self.Scope = getmetatable(self.Scope).__index
 	
 	return self
 end
 
-function Module:ConfigureScope(Callback: (ScopeClass.Scope) -> ())
+function Hub:ConfigureScope(Callback: (ScopeClass.Scope) -> ())
 	self.Scope:ConfigureScope(Callback)
 	
 	return self
 end
 
 
-function Module:GetClient()
+function Hub:GetClient()
 	return self.Client
 end
 
-function Module:BindClient(Client: any?)
+function Hub:BindClient(Client: any?)
 	self.Client = Client
 end
 
-function Module:UnbindClient()
 	return Module:BindClient(nil)
+function Hub:UnbindClient()
 end
 
-return Module
+return Hub
