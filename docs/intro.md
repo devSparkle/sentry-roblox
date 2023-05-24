@@ -32,7 +32,7 @@ Sentry = "devsparkle/sentry-roblox@^1.0.0"
 This install has the benefit of easily updating whenever we release bugfixes,
 security patches and even new features, just by using `wally update`!
 
-To complete the instalation, add a server-sided script in your game, and paste the following contents:
+To complete the installation, add a server-sided script in your game, and paste the following contents:
 
 ```lua
 local SentrySDK = require(game:GetService("ReplicatedStorage").SentrySDK)
