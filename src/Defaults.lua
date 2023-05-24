@@ -8,12 +8,29 @@ local Module = {}
 type Hint = {[string]: any}
 type Filter<T> = (T, Hint) -> (T?)
 
+--[=[
+	@within SDK
+	@interface Options
+	
+	.DSN string? -- The DSN for the sentry project to send events to
+	.debug boolean? -- See [SDK.debug] (must press the "Show Private")
+	
+	.DefaultIntegrations boolean? -- Whether to enable the built-in integrations. Defaults to true.
+	.Integrations {Integration}?
+	
+	.Release string?
+	.Environment string?
+	
+	.SampleRate number?
+	
+	.ServerName string? -- Defaults to `game.JobId` or `"local"`
+]=]
 export type Options = {
 	DSN: string?,
 	debug: boolean?,
 	
 	DefaultIntegrations: boolean?,
-	Integrations: {string}?,
+	Integrations: {ModuleScript}?,
 	
 	Release: string?,
 	Environment: string?,
@@ -59,7 +76,7 @@ Module.Options = {
 	SendDefaultPII = false,
 	IncludeLocalVariables = true,
 	
-	ServerName = game.JobId,
+	ServerName = (if game.JobId ~= "" then game.JobId else "local"),
 	
 	InAppInclude = {},
 	InAppExclude = {},

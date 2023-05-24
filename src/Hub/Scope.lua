@@ -22,6 +22,10 @@ Scope.__index = Scope
 
 --// Functions
 
+--[=[
+	@private
+	@param Function (Event, Hint) -> (Event)
+]=]
 function Scope._AddGlobalEventProcessor(Function)
 	local BindableFunction = Instance.new("BindableFunction")
 	
@@ -31,6 +35,8 @@ function Scope._AddGlobalEventProcessor(Function)
 	BindableFunction.Parent = script
 end
 
+--[=[
+]=]
 function Scope.new()
 	return setmetatable({
 		extra = {},
@@ -50,6 +56,13 @@ function Scope:ConfigureScope(Callback: (Scope) -> ())
 end
 
 
+--[=[
+	Adds information of the given player to each event sent.
+	Only one user may be associated with a Scope at any given time. Calling this method will override the current user.
+	When no player is provided, any existing player information is removed.
+	
+	The `UserId`, `Name` and country-code of the player is sent.
+]=]
 function Scope:SetUser(Player: Player | number)
 	if typeof(Player) == "Instance" then
 		local IsLocal = (Player == PlayerService.LocalPlayer)
@@ -78,10 +91,14 @@ function Scope:SetUser(Player: Player | number)
 end
 
 
+--[=[
+]=]
 function Scope:SetExtra(Key: string, Value: Defaults.ValidJSONValues)
 	self.extra[Key] = Value
 end
 
+--[=[
+]=]
 function Scope:SetExtras(Dictionary: {[string]: Defaults.ValidJSONValues})
 	for Key, Value in next, Dictionary do
 		self.extra[Key] = Value
@@ -89,10 +106,14 @@ function Scope:SetExtras(Dictionary: {[string]: Defaults.ValidJSONValues})
 end
 
 
+--[=[
+]=]
 function Scope:SetTag(Key: string, Value: Defaults.ValidJSONValues)
 	self.tags[Key] = Value
 end
 
+--[=[
+]=]
 function Scope:SetTags(Dictionary: {[string]: Defaults.ValidJSONValues})
 	for Key, Value in next, Dictionary do
 		self.tags[Key] = Value
@@ -100,28 +121,41 @@ function Scope:SetTags(Dictionary: {[string]: Defaults.ValidJSONValues})
 end
 
 
+--[=[
+]=]
 function Scope:SetContext(Key: string, Value: Defaults.ValidJSONValues)
 	self.contexts[Key] = Value
 end
 
+--[=[
+]=]
 function Scope:SetLevel(Level: Defaults.Level)
 	self.level = Level
 end
 
+--[=[
+]=]
 function Scope:SetTranSaction(TransactionName: string)
 	self.transaction = TransactionName
 end
 
-function Scope:SetFingerprint(Fingerprint)
+--[=[
+]=]
+function Scope:SetFingerprint(Fingerprint: {string})
 	self.fingerprint = Fingerprint
 end
 
 
+--[=[
+	@param Processor (Event, Hint) -> (Event)
+]=]
 function Scope:AddEventProcessor(Processor)
 	table.insert(self._event_processors, Processor)
 end
 
 
+--[=[
+]=]
 function Scope:Clear()
 	local EmptyScope = Scope.new()
 	
@@ -130,20 +164,33 @@ function Scope:Clear()
 	end
 end
 
+--[=[
+]=]
 function Scope:Clone()
 	return setmetatable(table.clone(self), Scope)
 end
 
 
+--[=[
+	@unreleased
+	@param Breadcrumb Breadcrumb
+]=]
 function Scope:AddBreadcrumb(Breadcrumb)
 	print([[WIP: The function "Scope:AddBreadcrumb" is not yet implemented.]])
 end
 
+--[=[
+	@unreleased
+]=]
 function Scope:ClearBreadcrumbs()
 	print([[WIP: The function "Scope:ClearBreadcrumbs" is not yet implemented.]])
 end
 
 
+--[=[
+	@param Event Event
+	@param Hint Hint
+]=]
 function Scope:ApplyToEvent(Event: Defaults.Event, Hint): Defaults.Event
 	local Event = Defaults:AggregateDictionaries(self, Event)
 	local EventProcessors = table.clone(Event._event_processors)

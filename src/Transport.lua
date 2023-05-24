@@ -6,6 +6,7 @@ local HttpService = game:GetService("HttpService")
 
 --[=[
 	@class Transport
+	@private
 	
 	The transport is an internal construct of the client that abstracts away
 	the event sending. Typically the transport runs in a separate thread and

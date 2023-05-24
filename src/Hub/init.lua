@@ -19,18 +19,31 @@ local Hub = {}
 
 --// Functions
 
+--[=[
+	@param Client Client
+	@param Scope Scope
+]=]
 function Hub.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?)
 	return setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Hub})
 end
 
+
+--[=[
+]=]
 function Hub:Clone()
 	return Hub.new(self.Client, self.Scope:Clone())
 end
 
+--[=[
+]=]
 function Hub:GetCurrentHub()
 	return self
 end
 
+--[=[
+	@param Event Event
+	@param Hint Hint
+]=]
 function Hub:CaptureEvent(Event: Defaults.Event, Hint)
 	if self.Options then
 		if self.Options.SampleRate == 0 then return end
@@ -42,6 +55,9 @@ function Hub:CaptureEvent(Event: Defaults.Event, Hint)
 	return self.Client:CaptureEvent(Event, Hint, self.Scope)
 end
 
+--[=[
+	@param Level Level
+]=]
 function Hub:CaptureMessage(Message: string, Level: Defaults.Level? )
 	return self:CaptureEvent({
 		level = Level or "info",
@@ -52,6 +68,8 @@ function Hub:CaptureMessage(Message: string, Level: Defaults.Level? )
 	})
 end
 
+--[=[
+]=]
 function Hub:CaptureException(ErrorMessage: string?)
 	if ErrorMessage == nil then
 		return function(...)
@@ -97,6 +115,8 @@ function Hub:CaptureException(ErrorMessage: string?)
 end
 
 
+--[=[
+]=]
 function Hub:PushScope()
 	local OldScope = self.Scope
 	local NewScope = setmetatable(Defaults:DeepCopy(OldScope), {__index = OldScope})
@@ -108,16 +128,24 @@ function Hub:PushScope()
 	end
 end
 
+--[=[
+	@unreleased
+]=]
 function Hub:WithScope()
 	
 end
 
+--[=[
+	@unreleased
+]=]
 function Hub:PopScope()
 	self.Scope = getmetatable(self.Scope).__index
 	
 	return self
 end
 
+--[=[
+]=]
 function Hub:ConfigureScope(Callback: (ScopeClass.Scope) -> ())
 	self.Scope:ConfigureScope(Callback)
 	
@@ -125,18 +153,27 @@ function Hub:ConfigureScope(Callback: (ScopeClass.Scope) -> ())
 end
 
 
+--[=[
+]=]
 function Hub:GetClient()
 	return self.Client
 end
 
+--[=[
+	@param Client Client
+]=]
 function Hub:BindClient(Client: any?)
 	self.Client = Client
 end
 
+--[=[
+]=]
 function Hub:UnbindClient()
 	return self:BindClient(nil)
 end
 
+--[=[
+]=]
 function Hub:StartSession()
 	local CurrentTime = DateTime.now()
 	
@@ -157,6 +194,8 @@ function Hub:StartSession()
 	})
 end
 
+--[=[
+]=]
 function Hub:EndSession()
 	local CurrentTime = DateTime.now()
 	

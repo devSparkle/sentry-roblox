@@ -36,7 +36,7 @@ function SDK:Init(Options: Defaults.Options?)
 	
 	self.Options.Transport:Init(self.Options, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT)
 	self.Scope:ConfigureScope(function(Scope)
-		Scope.server_name = (if game.JobId ~= "" then game.JobId else "local")
+		Scope.server_name = self.Options.ServerName
 		Scope.logger = "server"
 		
 		Scope.release = self.Options.Release
