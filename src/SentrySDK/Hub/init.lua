@@ -80,6 +80,7 @@ function Hub:CaptureException(ErrorMessage: string?)
 		message = ErrorMessage,
 		traceback = debug.traceback(),
 		environments = EnvTrace,
+		memory_category = debug.getmemorycategory(),
 		
 		thread = Thread,
 		thread_id = Event.exception.thread_id,
