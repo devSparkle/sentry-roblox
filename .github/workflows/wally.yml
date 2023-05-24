@@ -23,4 +23,4 @@ jobs:
       - name: Login
         run: wally login --token "${{ secrets.WALLY_AUTH }}"
       - name: Publish
-        uses: wally publish
+        run: wally publish
