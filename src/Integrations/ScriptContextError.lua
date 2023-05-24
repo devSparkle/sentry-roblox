@@ -20,7 +20,15 @@ function Module:SetupOnce(AddGlobalEventProcessor, CurrentHub)
 	end)
 	
 	ScriptContext.Error:Connect(function(Message, StackTrace, Origin)
-		Hub:CaptureMessage(Message, "error")
+		Hub:CaptureEvent({
+			exception = {
+				type = Message,
+			},
+		}, {
+			message = Message,
+			traceback = StackTrace,
+			origin = Origin,
+		})
 	end)
 end
 
