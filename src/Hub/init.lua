@@ -70,8 +70,10 @@ function Hub:CaptureException(ErrorMessage: string?)
 	local EnvTrace = {}
 	local EnvCount = 1
 	
-	while pcall(function() table.insert(EnvTrace, EnvCount, getfenv(EnvCount)) end) do
-		EnvCount += 1
+	if self.Options and self.Options.IncludeLocalVariables then
+		while pcall(function() table.insert(EnvTrace, EnvCount, getfenv(EnvCount)) end) do
+			EnvCount += 1
+		end
 	end
 	
 	local OriginEnv = EnvTrace[1]
