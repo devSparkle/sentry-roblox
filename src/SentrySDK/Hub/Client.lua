@@ -1,11 +1,4 @@
 --!nocheck
---[=[
-	A Client is the part of the SDK that is responsible for event creation. To give
-	an example, the Client should convert an exception to a Sentry event.
-	
-	The Client should be stateless, it gets the Scope injected and delegates the
-	work of sending the event to the Transport.
-]=]
 --// Initialization
 
 local HttpService = game:GetService("HttpService")
@@ -13,12 +6,21 @@ local HttpService = game:GetService("HttpService")
 local Defaults = require(script.Parent.Parent:WaitForChild("Defaults"))
 local Transport = require(script.Parent.Parent:WaitForChild("Transport"))
 
-local Module = {}
+--[=[
+	@class Client
+	
+	A Client is the part of the SDK that is responsible for event creation. To give
+	an example, the Client should convert an exception to a Sentry event.
+	
+	The Client should be stateless, it gets the Scope injected and delegates the
+	work of sending the event to the Transport.
+]=]
+local Client = {}
 
 --// Functions
 
-function Module.new()
-	return setmetatable({}, {__index = Module})
+function Client.new()
+	return setmetatable({}, {__index = Client})
 end
 
 --[=[
@@ -26,8 +28,11 @@ end
 	
 	In addition, if a scope is passed to this system, the data from the scope
 	passes it to the internal transport.
+	
+	@param Event Event
+	@param Scope Scope
 ]=]
-function Module:CaptureEvent(Event, Hint, Scope)
+function Client:CaptureEvent(Event, Hint: {[string]: any}, Scope)
 	if not Hint then Hint = {} end
 	
 	Event.event_id = (Hint.event_id or string.gsub(HttpService:GenerateGUID(false), "-", ""))
@@ -53,17 +58,17 @@ end
 	
 	The client is disabled after this method is called.
 ]=]
-function Module:Close(Timeout: number?)
+function Client:Close(Timeout: number?)
 	
 end
 
 --[=[
 	Same as close difference is that the client is NOT disposed after invocation.
 ]=]
-function Module:Flush(Timeout: number?)
+function Client:Flush(Timeout: number?)
 	
 end
 
-export type Client = typeof(Module.new())
+export type Client = typeof(Client.new())
 
-return table.freeze(Module)
+return table.freeze(Client)

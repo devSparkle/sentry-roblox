@@ -9,7 +9,8 @@ local Defaults = require(script:WaitForChild("Defaults"))
 local Transport = require(script:WaitForChild("Transport"))
 local IntegrationsFolder = script:WaitForChild("Integrations")
 
-local Module = setmetatable({}, {__index = HubClass.new()})
+--- @class SDK
+local SDK = setmetatable({}, {__index = HubClass.new()})
 
 --// Variables
 
@@ -19,11 +20,14 @@ HubClass.SDK_INTERFACE = table.freeze({
 })
 
 local SENTRY_PROTOCOL_VERSION = 7
-local SENTRY_CLIENT = string.format("%s/%s", Module.SDK_INTERFACE.name, Module.SDK_INTERFACE.version)
+local SENTRY_CLIENT = string.format("%s/%s", SDK.SDK_INTERFACE.name, SDK.SDK_INTERFACE.version)
 
 --// Functions
 
-function Module:Init(Options: Defaults.Options?)
+--[=[
+	@param Options Options
+]=]
+function SDK:Init(Options: Defaults.Options?)
 	if not Options then return end
 	if not Options.DSN then return end
 	if not RunService:IsServer() then return end
@@ -48,9 +52,9 @@ function Module:Init(Options: Defaults.Options?)
 	
 	for _, Integration in next, self.Options.Integrations do
 		task.spawn(function()
-			require(Integration):SetupOnce(self.Scope._AddGlobalEventProcessor, Module:GetCurrentHub())
+			require(Integration):SetupOnce(self.Scope._AddGlobalEventProcessor, SDK:GetCurrentHub())
 		end)
 	end
 end
 
-return Module
+return SDK

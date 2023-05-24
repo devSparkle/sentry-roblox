@@ -1,5 +1,12 @@
 --!nocheck
+--// Initialization
+
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
 --[=[
+	@class Transport
+	
 	The transport is an internal construct of the client that abstracts away
 	the event sending. Typically the transport runs in a separate thread and
 	gets events to send via a queue.
@@ -8,11 +15,6 @@
 	limits. The transport might also persist unsent events across restarts
 	if needed.
 ]=]
---// Initialization
-
-local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-
 local Module = {}
 
 --// Functions
