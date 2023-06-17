@@ -75,7 +75,13 @@ function Scope:SetUser(Player: Player | number)
 		
 		self.user = {
 			id = Player.UserId,
-			name = Player.Name,
+			username = Player.Name,
+			data = {
+				AccountAge = Player.AccountAge,
+				Character = (Player.Character ~= nil),
+				MembershipType = Player.MembershipType.Name,
+				Team = if Player.Team then tostring(Player.Team) else nil,
+			},
 			
 			geo = {
 				city = "Unknown",
