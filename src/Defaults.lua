@@ -96,7 +96,7 @@ export type Event = {
 	timestamp: string | number | nil,
 	platform: "other" | nil,
 	
-	level: EventLevel?, --/ The record severity. Defaults to error.
+	level: Level?, --/ The record severity. Defaults to error.
 	logger: string?, --/ The name of the logger which created the record.
 	transaction: string?, --/ The name of the transaction which caused this exception.
 	server_name: string?, --/ Identifies the host from which the event was recorded. Defaults to game.JobId
