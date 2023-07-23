@@ -16,7 +16,7 @@ local SDK = setmetatable({}, {__index = HubClass.new()})
 
 HubClass.SDK_INTERFACE = table.freeze({
 	name = "sentry.roblox.devsparkle",
-	version = "1.1.0",
+	version = "1.2.0",
 })
 
 local SENTRY_PROTOCOL_VERSION = 7
