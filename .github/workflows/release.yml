@@ -22,7 +22,7 @@ jobs:
       
       # Build steps
       - name: Setup Aftman
-        uses: ok-nick/setup-aftman@v0.3.0
+        uses: ok-nick/setup-aftman@v0.4.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build
