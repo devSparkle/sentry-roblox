@@ -30,7 +30,8 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          path: "SentrySDK.rbxm"
+          path: "*.rbxm"
+          if-no-files-found: error
       
       - name: Set Manifest
         id: set_manifest
