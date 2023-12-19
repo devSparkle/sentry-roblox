@@ -77,5 +77,5 @@ jobs:
         with:
           tag: v${{ needs.build.outputs.version }}
           commit: ${{ github.head_ref || github.ref_name }}
-          artifacts: "*.rbxm"
+          artifacts: "**/*.rbxm"
           prerelease: ${{ contains(needs.build.outputs.version, '-') }}
