@@ -1,81 +1,15 @@
-name: Build and Publish Binaries
-run-name: Release binaries and publish to Wally by @${{ github.actor }}
+name: "Roblox"
 
 on:
   push:
     paths:
-      - 'wally.toml'
+      - "wally.toml"
+  workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  workflow:
+    uses: ungms/.github/.github/workflows/roblox.yml@main
     
-    outputs:
-      version: ${{ fromJSON(steps.set_manifest.outputs.manifest).package.version }}
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      # Build steps
-      - name: Setup Aftman
-        uses: ok-nick/setup-aftman@v0.4.2
-        with:
-          cache: true
-      
-      - name: Build
-        run: rojo build -o SentrySDK.rbxm
-      
-      # Upload steps
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          path: "*.rbxm"
-          if-no-files-found: error
-      
-      - name: Set Manifest
-        id: set_manifest
-        run: echo "manifest=$(wally manifest-to-json)" >> $GITHUB_OUTPUT
-  
-  deploy:
-    if: github.ref == 'refs/heads/main'
-    
-    needs: build
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Setup Aftman
-        uses: ok-nick/setup-aftman@v0.4.2
-        with:
-          cache: true
-      
-      - name: Log in to wally
-        env:
-          WALLY_AUTH: ${{ secrets.WALLY_AUTH }}
-        run: |
-          mkdir ~/.wally
-          printenv WALLY_AUTH > ~/.wally/auth.toml
-      
-      - name: Push update to wally
-        run: wally publish
-  
-  release:
-    needs: [build, deploy]
-    runs-on: ubuntu-latest
-    
+    secrets: inherit
     permissions:
-      contents: write
-    
-    steps:
-      - name: Download
-        uses: actions/download-artifact@v4
-      
-      - uses: ncipollo/release-action@v1
-        with:
-          tag: v${{ needs.build.outputs.version }}
-          commit: ${{ github.head_ref || github.ref_name }}
-          artifacts: "**/*.rbxm"
-          prerelease: ${{ contains(needs.build.outputs.version, '-') }}
+        contents: write
