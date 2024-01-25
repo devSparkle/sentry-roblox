@@ -81,7 +81,7 @@ function Module:CaptureEvent(EncodedPayload)
 	end
 	
 	return RequestAsync({
-		Url = self.BaseUrl .. "/store/",
+		Url = self.BaseUrl .. "store/",
 		Method = "POST",
 		Headers = {
 			["Content-Type"] = "application/json",
@@ -102,7 +102,7 @@ function Module:CaptureEnvelope(Payload)
 	local Item = HttpService:JSONEncode({type = "session", length = #Payload})
 	
 	return RequestAsync({
-		Url = self.BaseUrl .. "/envelope/",
+		Url = self.BaseUrl .. "envelope/",
 		Method = "POST",
 		Headers = {
 			["Content-Type"] = "application/x-sentry-envelope",
