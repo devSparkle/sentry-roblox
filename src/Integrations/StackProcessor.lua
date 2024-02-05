@@ -55,18 +55,45 @@ local function ConvertStacktraceToFrames(Event, Hint)
 			end
 		end
 		
+		if SourceScript then
+			local Parent = SourceScript
+			Path = ""
+			
+			while Parent do
+				Path = (Parent.Name .. Path)
+				Parent = Parent.Parent
+				
+				if Parent then
+					Path = ("/" .. Path)
+				end
+			end
+			
+			if SourceScript:IsA("LocalScript") then
+				Path ..= ".client"
+			elseif SourceScript:IsA("Script") then
+				if SourceScript.RunContext == Enum.RunContext.Client then
+					Path ..= ".client"
+				else
+					Path ..= ".server"
+				end
+			end
+			
+			Path ..= ".luau"
+		end
+		
 		if Path and LineNumber then
 			table.insert(StacktraceFrames, 1, {
 				["function"] = FunctionName,
 				filename = Path,
+				abs_path = Path,
 				
 				lineno = tonumber(LineNumber),
-				module = (if SourceScript then SourceScript.Name else select(-1, unpack(string.split(Path, ".")))),
+				module = (if SourceScript then SourceScript.Name else select(-1, unpack(string.split(Path, "/")))),
 				vars = SanitizeEnvironment(Variables)
 			})
 		else
 			table.insert(StacktraceFrames, 1, {
-				filename = (if SourceScript then SourceScript:GetFullName() else nil),
+				filename = Path,
 				module = Line,
 				vars = SanitizeEnvironment(Variables)
 			})
