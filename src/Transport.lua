@@ -42,6 +42,10 @@ function Module:_Relay(...)
 end
 
 local function RequestAsync(...)
+	if not Module.SendStudioEvents and RunService:IsStudio() then
+		return
+	end
+	
 	if DateTime.now().UnixTimestamp < LimitUntil then
 		return {
 			Body = "",
@@ -129,6 +133,7 @@ function Module:Init(Options, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT)
 		assert(Authority, "Invalid Sentry DSN: Authority not found.")
 		assert(ProjectId, "Invalid Sentry DSN: Project ID not found.")
 		
+		self.SendStudioEvents = Options.SendStudioEvents
 		self.SendClientEvents = Options.SendClientEvents
 		
 		self.BaseUrl = string.format("%s://%s/api/%s/", Scheme, Authority, ProjectId)
