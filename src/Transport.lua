@@ -129,6 +129,8 @@ function Module:Init(Options, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT)
 		assert(Authority, "Invalid Sentry DSN: Authority not found.")
 		assert(ProjectId, "Invalid Sentry DSN: Project ID not found.")
 		
+		self.SendClientEvents = Options.SendClientEvents
+		
 		self.BaseUrl = string.format("%s://%s/api/%s/", Scheme, Authority, ProjectId)
 		self.AuthHeader = string.format(
 			"Sentry sentry_key=%s,sentry_version=%d,sentry_client=%s",
@@ -152,6 +154,10 @@ function Module:Init(Options, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT)
 		function ClientRelay.OnServerInvoke(Player, ...)
 			--// TODO: Player input validation
 			--// TODO: Forced user scope
+			
+			if not self.SendClientEvents then
+				return
+			end
 			
 			return ServerRelay:Invoke(...)
 		end
