@@ -27,7 +27,7 @@ function Module:SetupOnce(AddGlobalEventProcessor, CurrentHub)
 			if
 				CaptureFilterMode == "whitelist"
 				and CurrentHub.Options.WhitelistOutput
-				and has_match(CurrentHub.Options.WhitelistOutput, Message)
+				and not has_match(CurrentHub.Options.WhitelistOutput, Message)
 			then
 				return
 			end
@@ -35,7 +35,7 @@ function Module:SetupOnce(AddGlobalEventProcessor, CurrentHub)
 			if
 				CaptureFilterMode == "blacklist"
 				and CurrentHub.Options.BlacklistOutput
-				and not has_match(CurrentHub.Options.BlacklistOutput, Message)
+				and has_match(CurrentHub.Options.BlacklistOutput, Message)
 			then
 				return
 			end
