@@ -22,9 +22,8 @@ local Hub = {}
 --[=[
 	@param Client Client
 	@param Scope Scope
-	@param Options Options
 ]=]
-function Hub.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?, Options: Defaults.Options?)
+function Hub.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?)
 	return setmetatable({ Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new() }, { __index = Hub })
 end
 
