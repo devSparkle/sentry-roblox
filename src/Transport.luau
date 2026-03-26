@@ -1,8 +1,8 @@
 --!nocheck
 --// Initialization
 
-local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
 --[=[
 	@class Transport
@@ -106,7 +106,9 @@ function Module:CaptureEnvelope(Payload)
 	end
 
 	local EncodedPayload = HttpService:JSONEncode(Payload)
-	local Envelope = HttpService:JSONEncode({ event_id = HttpService:GenerateGUID(false), dsn = self.DSN })
+	local Envelope = HttpService:JSONEncode({
+		event_id = HttpService:GenerateGUID(false),
+	})
 	local Item = HttpService:JSONEncode({ type = "session", length = #EncodedPayload })
 
 	return RequestAsync({
