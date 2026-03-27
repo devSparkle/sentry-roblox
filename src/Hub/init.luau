@@ -177,6 +177,8 @@ function logger:CaptureLog(body: string | Defaults.LogParamFormat, level: Defaul
 end
 
 --[=[
+	This is internal method. Please use the Hub.logger table to send sentry formatted log
+	or customize LogServiceMessageOut integration instead 
 ]=]
 function Hub:_CaptureLog(payload)
 	if self.Options and self.Options.beforeSendLog then

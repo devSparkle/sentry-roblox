@@ -53,14 +53,6 @@ function SDK:Init(Options: Defaults.Options?)
 			require(Integration):SetupOnce(self.Scope._AddGlobalEventProcessor, SDK:GetCurrentHub())
 		end)
 	end
-
-	--  Disabled print/warn to avoid inf recursion
-	if self.Options and self.Options.beforeSendLog then
-		local bslEnv = getfenv(self.Options.beforeSendLog);
-		bslEnv.print = function(...) end
-		bslEnv.warn = function(...) end
-		setfenv(self.Options.beforeSendLog, bslEnv)
-	end
 end
 
 return SDK
