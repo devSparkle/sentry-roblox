@@ -68,25 +68,25 @@ function SDK:Init(Options: Defaults.Options?)
 	if not RunService:IsServer() then
 		return
 	end
-
+	
 	HubClass.Options = table.freeze(Defaults:AggregateDictionaries(Defaults.Options, Options))
-
+	
 	self.Options.Transport:Init(self.Options, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT)
 	self.Scope:ConfigureScope(function(Scope)
 		Scope.server_name = self.Options.ServerName
 		Scope.logger = "server"
-
+		
 		Scope.release = self.Options.Release
 		Scope.environment = self.Options.Environment
 		Scope.dist = tostring(game.PlaceVersion)
 	end)
-
+	
 	if self.Options.DefaultIntegrations then
 		for _, Child in next, IntegrationsFolder:GetChildren() do
 			table.insert(self.Options.Integrations, Child)
 		end
 	end
-
+	
 	for _, Integration in next, self.Options.Integrations do
 		task.spawn(function()
 			require(Integration):SetupOnce(self.Scope._AddGlobalEventProcessor, SDK:GetCurrentHub())

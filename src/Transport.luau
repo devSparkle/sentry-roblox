@@ -28,7 +28,7 @@ function Module:_GetRelay(): RemoteFunction | BindableFunction | nil
 	else
 		return script:FindFirstChild("ServerRelay") :: BindableFunction
 	end
-
+	
 	return
 end
 
@@ -37,7 +37,7 @@ function Module:_Relay(...)
 	if not Relay then
 		return
 	end
-
+	
 	if Relay:IsA("RemoteFunction") then
 		Relay:InvokeServer(...)
 	else
@@ -50,13 +50,13 @@ local function RequestAsync(...)
 		return {
 			Body = "",
 			Headers = {},
-
+			
 			StatusCode = 429,
 			StatusMessage = "Too Many Requests",
 			Success = false,
 		}
 	end
-
+	
 	local CallSuccess, Response = pcall(HttpService.RequestAsync, HttpService, ...)
 	Response = (
 		if CallSuccess
@@ -64,22 +64,22 @@ local function RequestAsync(...)
 			else {
 				Body = "",
 				Headers = {},
-
+				
 				StatusCode = 400,
 				StatusMessage = "InternalError",
 				Success = false,
 			}
 	)
-
+	
 	local RateLimitReset = Response.Headers[string.lower("X-Sentry-Rate-Limit-Reset")]
 	local Remaining = (Response.Headers[string.lower("X-Sentry-Rate-Limit-Remaining")] or math.huge)
-
+	
 	if RateLimitReset and Remaining then
 		LimitUntil = Remaining
 	elseif Response.StatusCode == 429 then
 		LimitUntil = DateTime.now().UnixTimestamp + (Response.Headers[string.lower("Retry-After")] or 60)
 	end
-
+	
 	return Response
 end
 
@@ -87,7 +87,7 @@ function Module:CaptureEvent(EncodedPayload)
 	if not self.InitThread then
 		return self:_Relay("CaptureEvent", EncodedPayload)
 	end
-
+	
 	return RequestAsync({
 		Url = self.BaseUrl .. "store/",
 		Method = "POST",
@@ -95,7 +95,7 @@ function Module:CaptureEvent(EncodedPayload)
 			["Content-Type"] = "application/json",
 			["X-Sentry-Auth"] = self.AuthHeader,
 		},
-
+		
 		Body = EncodedPayload,
 	})
 end
@@ -104,13 +104,13 @@ function Module:CaptureEnvelope(Payload)
 	if not self.InitThread then
 		return self:_Relay("CaptureEnvelope", Payload)
 	end
-
+	
 	local EncodedPayload = HttpService:JSONEncode(Payload)
 	local Envelope = HttpService:JSONEncode({
 		event_id = HttpService:GenerateGUID(false),
 	})
 	local Item = HttpService:JSONEncode({ type = "session", length = #EncodedPayload })
-
+	
 	return RequestAsync({
 		Url = self.BaseUrl .. "envelope/",
 		Method = "POST",
@@ -118,7 +118,7 @@ function Module:CaptureEnvelope(Payload)
 			["Content-Type"] = "application/x-sentry-envelope",
 			["X-Sentry-Auth"] = self.AuthHeader,
 		},
-
+		
 		Body = table.concat({ Envelope, Item, EncodedPayload }, "\n"),
 	})
 end
@@ -129,20 +129,20 @@ function Module:Init(Options, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT)
 		"The SentrySDK Transport can only be initialized once!"
 	)
 	assert(not script:FindFirstChildWhichIsA("RemoteFunction"), "The SentrySDK Transport can only be initialized once!")
-
+	
 	self.InitThread = true
-
+	
 	do --/ Process Options
 		local Scheme, PublicKey, Authority, ProjectId =
 			string.match(Options.DSN or "", "^([^:]+)://([^:]+)@([^/]+)/(.+)$")
-
+		
 		assert(Scheme, "Invalid Sentry DSN: Scheme not found.")
 		assert(string.match(string.lower(Scheme), "^https?$"), "Invalid Sentry DSN: Scheme not valid.")
-
+		
 		assert(PublicKey, "Invalid Sentry DSN: Public Key not found.")
 		assert(Authority, "Invalid Sentry DSN: Authority not found.")
 		assert(ProjectId, "Invalid Sentry DSN: Project ID not found.")
-
+		
 		self.DSN = Options.DSN
 		self.BaseUrl = string.format("%s://%s/api/%s/", Scheme, Authority, ProjectId)
 		self.AuthHeader = string.format(
@@ -152,24 +152,24 @@ function Module:Init(Options, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT)
 			SENTRY_CLIENT
 		)
 	end
-
+	
 	do --/ Load Relays
 		local ServerRelay = Instance.new("BindableFunction")
 		ServerRelay.Name = "ServerRelay"
 		ServerRelay.Parent = script
-
+		
 		function ServerRelay.OnInvoke(FunctionName, ...)
 			return self[FunctionName](self, ...)
 		end
-
+		
 		local ClientRelay = Instance.new("RemoteFunction")
 		ClientRelay.Name = "ClientRelay"
 		ClientRelay.Parent = script
-
+		
 		function ClientRelay.OnServerInvoke(Player, ...)
 			--// TODO: Player input validation
 			--// TODO: Forced user scope
-
+			
 			return ServerRelay:Invoke(...)
 		end
 	end

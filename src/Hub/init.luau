@@ -24,8 +24,9 @@ local Hub = {}
 	@param Scope Scope
 ]=]
 function Hub.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?)
-	return setmetatable({ Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new() }, { __index = Hub })
+	return setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Hub})
 end
+
 
 --[=[
 ]=]
@@ -45,27 +46,25 @@ end
 ]=]
 function Hub:CaptureEvent(Event: Defaults.Event, Hint)
 	if self.Options then
-		if self.Options.SampleRate == 0 then
-			return
-		end
+		if self.Options.SampleRate == 0 then return end
 		if math.random() > self.Options.SampleRate then
 			return
 		end
 	end
-
+	
 	return self.Client:CaptureEvent(Event, Hint, self.Scope)
 end
 
 --[=[
 	@param Level Level
 ]=]
-function Hub:CaptureMessage(Message: string, Level: Defaults.Level?)
+function Hub:CaptureMessage(Message: string, Level: Defaults.Level? )
 	return self:CaptureEvent({
 		level = Level or "info",
 		message = {
 			formatted = Message, --// TODO: Remove PII (player names, user IDs)
 			message = Message,
-		},
+		}
 	})
 end
 
@@ -77,54 +76,53 @@ function Hub:CaptureException(ErrorMessage: string?)
 			return self:CaptureException(...)
 		end
 	end
-
+	
 	local Thread = coroutine.running()
 	local Event = {
-		exception = { {
+		exception = {{
 			type = ErrorMessage,
 			thread_id = string.gsub(tostring(Thread), "thread: ", ""),
-		} },
+		}},
 	}
-
+	
 	local EnvTrace = {}
 	local EnvCount = 1
-
+	
 	if self.Options and self.Options.IncludeLocalVariables then
-		while pcall(function()
-			table.insert(EnvTrace, EnvCount, getfenv(EnvCount))
-		end) do
+		while pcall(function() table.insert(EnvTrace, EnvCount, getfenv(EnvCount)) end) do
 			EnvCount += 1
 		end
 	end
-
+	
 	local OriginEnv = EnvTrace[1]
-
+	
 	if OriginEnv then
 		if OriginEnv.script then
 			Event.exception[1].module = tostring(OriginEnv.script)
 			Event.exception[1].thread_id = Event.exception[1].thread_id
 		end
 	end
-
+	
 	return self:CaptureEvent(Event, {
 		message = ErrorMessage,
 		traceback = debug.traceback(),
 		environments = EnvTrace,
 		memory_category = debug.getmemorycategory(),
-
+		
 		thread = Thread,
 		thread_id = Event.exception[1].thread_id,
 	})
 end
 
+
 --[=[
 ]=]
 function Hub:PushScope()
 	local OldScope = self.Scope
-	local NewScope = setmetatable(Defaults:DeepCopy(OldScope), { __index = OldScope })
-
+	local NewScope = setmetatable(Defaults:DeepCopy(OldScope), {__index = OldScope})
+	
 	self.Scope = NewScope
-
+	
 	return self, function()
 		self.Scope = OldScope
 	end
@@ -133,14 +131,16 @@ end
 --[=[
 	@unreleased
 ]=]
-function Hub:WithScope() end
+function Hub:WithScope()
+	
+end
 
 --[=[
 	@unreleased
 ]=]
 function Hub:PopScope()
 	self.Scope = getmetatable(self.Scope).__index
-
+	
 	return self
 end
 
@@ -148,9 +148,10 @@ end
 ]=]
 function Hub:ConfigureScope(Callback: (ScopeClass.Scope) -> ())
 	self.Scope:ConfigureScope(Callback)
-
+	
 	return self
 end
+
 
 --[=[
 ]=]
@@ -175,7 +176,7 @@ end
 ]=]
 function Hub:StartSession()
 	local CurrentTime = DateTime.now()
-
+	
 	return self.Options.Transport:CaptureEnvelope({
 		sid = self.Scope.user.sid,
 		did = tostring(self.Scope.user.id),
@@ -183,13 +184,13 @@ function Hub:StartSession()
 		timestamp = CurrentTime:ToIsoDate(),
 		started = self.Scope.user.started:ToIsoDate(),
 		init = true,
-
+		
 		status = "ok",
-
+		
 		attrs = {
 			release = self.Scope.release,
 			environment = self.Scope.environment,
-		},
+		}
 	})
 end
 
@@ -197,24 +198,25 @@ end
 ]=]
 function Hub:EndSession()
 	local CurrentTime = DateTime.now()
-
+	
 	return self.Options.Transport:CaptureEnvelope({
 		sid = self.Scope.user.sid,
 		did = tostring(self.Scope.user.id),
 		seq = CurrentTime.UnixTimestampMillis,
 		timestamp = CurrentTime:ToIsoDate(),
 		started = self.Scope.user.started:ToIsoDate(),
-
+		
 		status = "exited",
-
+		
 		attrs = {
 			release = self.Scope.release,
 			environment = self.Scope.environment,
-		},
+		}
 	})
 end
 
 --// Exports
+
 export type Client = ClientClass.Client
 export type Scope = ScopeClass.Scope
 
