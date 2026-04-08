@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local Module = {}
 
 type Hint = {[string]: any}
-type Filter<T> = (T, Hint) -> (T?)
+type Filter<T> = (T, Hint) -> T?
 
 --[=[
 	@within SDK
@@ -51,11 +51,15 @@ export type Options = {
 	WithLocals: boolean?,
 	
 	BeforeSend: Filter<unknown>?,
---	BeforeSendTransaction: Filter<unknown>?,
+	--	BeforeSendTransaction: Filter<unknown>?,
 	BeforeBreadcrumb: Filter<unknown>?,
 	
 	Transport: unknown,
 	ShutdownTimeout: number?,
+	
+	CaptureFilterMode: "whitelist" | "blacklist"?,
+	WhitelistOutput: {string}?,
+	BlacklistOutput: {string}?,
 }
 
 Module.Options = {
@@ -85,7 +89,7 @@ Module.Options = {
 	
 	Transport = require(script.Parent:WaitForChild("Transport")),
 	ShutdownTimeout = 2,
-}:: Options
+} :: Options
 
 Module.Levels = {"fatal", "error", "warning", "info", "debug"}
 
@@ -115,32 +119,36 @@ export type Event = {
 		name: string,
 		version: string,
 		integrations: {string}?,
-		packages: {{
-			name: string,
-			version: string,
-		}}?,
+		packages: {
+			{
+				name: string,
+				version: string,
+			}
+		}?,
 	}?,
 	
-	exception: {{
-		type: string?,
-		value: string?,
-		module: string?,
-		thread_id: string?,
-		
-		mechanism: {
-			data: {[string]: any}?,
-			description: string?,
-			handled: boolean?,
-			help_link: string?,
-			synthetic: boolean?,
+	exception: {
+		{
 			type: string?,
-		}?,
-		
-		stacktrace: {
-			frames: {},
-			registers: {[string]: string}?,
-		}?,
-	}}?,
+			value: string?,
+			module: string?,
+			thread_id: string?,
+			
+			mechanism: {
+				data: {[string]: any}?,
+				description: string?,
+				handled: boolean?,
+				help_link: string?,
+				synthetic: boolean?,
+				type: string?,
+			}?,
+			
+			stacktrace: {
+				frames: {},
+				registers: {[string]: string}?,
+			}?,
+		}
+	}?,
 	
 	user: {
 		id: number,
@@ -150,7 +158,7 @@ export type Event = {
 			city: string?,
 			country_code: string, --/ Two-letter country code (ISO 3166-1 alpha-2).
 			region: string?,
-		}
+		},
 	}?,
 	
 	message: {
@@ -159,13 +167,14 @@ export type Event = {
 		params: {string}?,
 	}?,
 	
-	errors: {{
-		type: string,
-		path: string?,
-		details: string?,
-	}}?,
+	errors: {
+		{
+			type: string,
+			path: string?,
+			details: string?,
+		}
+	}?,
 }
-
 
 --// Functions
 
@@ -176,7 +185,7 @@ end
 function Module:AggregateDictionaries(...)
 	local Aggregate = {}
 	
-	for _, Dictionary in ipairs{...} do
+	for _, Dictionary in ipairs({...}) do
 		for Index, Value in Dictionary do
 			if typeof(Value) == "table" and typeof(Aggregate[Index]) == "table" then
 				Aggregate[Index] = self:AggregateDictionaries(Aggregate[Index], Value)
@@ -200,7 +209,6 @@ function Module:DeepCopy<T>(Table: T): T
 	
 	return Table
 end
-
 
 function Module:OverlapTables<B, F>(Background: B, Foreground: F?): F & B
 	return setmetatable(Foreground or {}, {__index = Background})
