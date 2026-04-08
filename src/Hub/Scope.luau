@@ -42,6 +42,7 @@ function Scope.new()
 		extra = {},
 		contexts = {},
 		tags = {},
+		attributes = {},
 		
 		_event_processors = {},
 	}, Scope)
@@ -149,6 +150,22 @@ end
 ]=]
 function Scope:SetFingerprint(Fingerprint: {string})
 	self.fingerprint = Fingerprint
+end
+
+--[=[
+]=]
+function Scope:setAttributes(attributes: {string})
+	for k,v in pairs(attributes) do
+		self.attributes[k] = v
+	end
+end
+
+--[=[
+]=]
+function Scope:removeAttribute(attribute: string)
+	if(self.attributes[attribute]) then
+		self.attributes[attribute] = nil;
+	end
 end
 
 

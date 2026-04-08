@@ -20,6 +20,10 @@ type Filter<T> = (T, Hint) -> (T?)
 	
 	.Release string?
 	.Environment string?
+
+	.enableLogs boolean? -- Whether to enable sentry's new structured logging feature
+	.beforeSendLog ((log: StructLog) -> StructLog)? -- Enables log content transform/removal before sending it to ingest.
+	-- WARNING: Do not use print/warn function inside beforeSendLog as it may conflict with LogServiceMessageOut.
 	
 	.SampleRate number?
 	
@@ -53,6 +57,11 @@ export type Options = {
 	BeforeSend: Filter<unknown>?,
 --	BeforeSendTransaction: Filter<unknown>?,
 	BeforeBreadcrumb: Filter<unknown>?,
+
+-- Logging stuff
+	enableLogs: boolean?,
+	beforeSendLog: ((log: StructLog) -> StructLog)?,
+
 	
 	Transport: unknown,
 	ShutdownTimeout: number?,
@@ -82,15 +91,18 @@ Module.Options = {
 	InAppExclude = {},
 	
 	WithLocals = true,
+
+	enableLogs = false,
 	
 	Transport = require(script.Parent:WaitForChild("Transport")),
 	ShutdownTimeout = 2,
 }:: Options
 
-Module.Levels = {"fatal", "error", "warning", "info", "debug"}
+Module.Levels = {"fatal", "error", "warning", "info", "debug", "trace"}
 
 export type ValidJSONValues = string | number | boolean
-export type Level = "fatal" | "error" | "warning" | "info" | "debug"
+-- "trace" is only supported for structured logging
+export type Level = "fatal" | "error" | "warning" | "info" | "debug" | "trace" 
 export type Event = {
 	event_id: string?,
 	timestamp: string | number | nil,
@@ -165,6 +177,27 @@ export type Event = {
 		details: string?,
 	}}?,
 }
+
+-- https://develop.sentry.dev/sdk/telemetry/logs/#default-attributes
+export type StructLog = {
+	timestamp: number; -- Unix Epoch (in sec)
+	trace_id: string; -- Random 16 byte hex
+	level: Level;
+	body: string; -- Formatted Message
+	attributes: {
+		["sentry.environment"]: string?;
+		["sentry.release"]: string?;
+		["sentry.sdk.name"]: string?;
+		["sentry.sdk.version"]: string?;
+		["user.id"]: string?;
+		["user.name"]: string?;
+	} | {[string]: any};
+};
+export type LogParamFormat = {
+	template: string;
+	params: {string}
+}
+
 
 
 --// Functions

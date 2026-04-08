@@ -6,6 +6,9 @@ local Defaults = require(script.Parent:WaitForChild("Defaults"))
 local ClientClass = require(script:WaitForChild("Client"))
 local ScopeClass = require(script:WaitForChild("Scope"))
 
+local RunService = game:GetService("RunService")
+local Utils = require(script.Parent.Utils)
+
 --[=[
 	@class Hub
 	
@@ -16,6 +19,7 @@ local ScopeClass = require(script:WaitForChild("Scope"))
 	known as async local or context local).
 ]=]
 local Hub = {}
+local logger = {}
 
 --// Functions
 
@@ -24,7 +28,9 @@ local Hub = {}
 	@param Scope Scope
 ]=]
 function Hub.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?)
-	return setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Hub})
+	local mainTab = setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Hub})
+	mainTab.logger = setmetatable({Hub=mainTab}, {__index = logger})
+	return mainTab
 end
 
 
@@ -68,6 +74,120 @@ function Hub:CaptureMessage(Message: string, Level: Defaults.Level? )
 	})
 end
 
+
+--[=[
+  @param body string or logger.fmt content
+  @param attribute any key/value (string, number, or bool)
+]=]
+function logger:debug(body: string | Defaults.LogParamFormat, attribute: {[string]: any}?)
+	return self:CaptureLog(body, "debug", attribute);
+end
+
+--[=[
+  @param body string or logger.fmt content
+  @param attribute any key/value (string, number, or bool)
+]=]
+function logger:info(body: string | Defaults.LogParamFormat, attribute: {[string]: any}?)
+	return self:CaptureLog(body, "info", attribute);
+end
+
+--[=[
+  @param body string or logger.fmt content
+  @param attribute any key/value (string, number, or bool)
+]=]
+function logger:warn(body: string | Defaults.LogParamFormat, attribute: {[string]: any}?)
+	return self:CaptureLog(body, "warn", attribute);
+end
+
+--[=[
+  @param body string or logger.fmt content
+  @param attribute any key/value (string, number, or bool)
+]=]
+function logger:error(body: string | Defaults.LogParamFormat, attribute: {[string]: any}?)
+	return self:CaptureLog(body, "error", attribute);
+end
+
+--[=[
+	@param template 'string.format' text template
+	@param ... 'string.format' parameters to complete the template
+]=]
+function logger:fmt(template: string, ...: string): Defaults.LogParamFormat
+	local content = {}
+	content.template = template
+	content.params = {...}
+	return content;
+end
+
+--[=[
+  @param body string or logger.fmt content
+  @param attributes custom log metadata (key/value)
+  @param level level
+]=]
+function logger:CaptureLog(body: string | Defaults.LogParamFormat, level: Defaults.Level, attributes: {[string]: any}?)
+	if not body then return; end
+	-- Byapss for client since it doesn't have init options
+	if not (self.Hub.Options and self.Hub.Options.enableLogs) and not RunService:IsClient() then return; end
+	local LogPayload = {
+		timestamp = DateTime.now().UnixTimestamp;
+		level = level or "info"; -- set default level if needed
+		body = body;
+		attributes = {
+			["sentry.environment"] = self.Hub.Options and self.Hub.Options.Environment;
+			["sentry.release"] = self.Hub.Options and self.Hub.Options.Release;
+		};
+	}
+
+	-- Convert Formatted body to payload
+	if typeof(LogPayload.body) == "table" then
+		LogPayload.body = string.format(body.template, table.unpack(body.params));
+		LogPayload.attributes["sentry.message.template"] = Utils.valToAttrVal(body.template)
+		for i,v in ipairs(body.params) do
+			LogPayload.attributes["sentry.message.parameter."..i-1] = Utils.valToAttrVal(v)
+		end
+	end
+
+	-- Copy over attribute table
+	if attributes then
+		for k,v in pairs(attributes) do
+			LogPayload.attributes[k] = Utils.valToAttrVal(v)
+		end
+	end
+
+	-- Copy over user attributes
+	if self.Hub.Scope.user then
+		local userObj = Utils.flattenTable(self.Hub.Scope.user, "user")
+		for k,v in pairs(userObj) do
+			LogPayload.attributes[k] = Utils.valToAttrVal(v);
+		end
+	end
+
+	-- Server/Client ctx
+	if self.Hub.Scope.logger then
+		LogPayload.attributes.logger = Utils.valToAttrVal(self.Hub.Scope.logger);
+	end
+
+	-- Copy over Scope Attributes
+	if(self.Hub.Scope.attributes) then
+		for k,v in pairs(self.Hub.Scope.attributes) do
+			LogPayload.attributes[k] = Utils.valToAttrVal(v)
+		end
+	end
+
+	self.Hub:_CaptureLog(LogPayload)
+end
+
+--[=[
+	This is internal method. Please use the Hub.logger table to send sentry formatted log
+	or customize LogServiceMessageOut integration instead 
+]=]
+function Hub:_CaptureLog(payload)
+	if self.Options and self.Options.beforeSendLog then
+		local newPayload = self.Options.beforeSendLog(payload);
+		if newPayload == nil then return; end
+		return self.Client:CaptureLog(newPayload, self.Scope)
+	end
+	return self.Client:CaptureLog(payload, self.Scope)
+end
 --[=[
 ]=]
 function Hub:CaptureException(ErrorMessage: string?)

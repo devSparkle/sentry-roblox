@@ -3,6 +3,7 @@
 
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local Utils = require(script.Parent.Utils)
 
 --[=[
 	@class Transport
@@ -92,6 +93,54 @@ function Module:CaptureEvent(EncodedPayload)
 		
 		Body = EncodedPayload,
 	})
+end
+
+local tempPayload = {}
+local lockLogsTable = false;
+local timerSend = Utils.Timer.new(function() Module:flushLogs() end)
+function Module:flushLogs()
+	if(#tempPayload == 0) then return; end
+	if(RunService:IsClient()) then return; end
+	timerSend:cancel()
+	lockLogsTable = true;
+
+	local bodyData = {
+		HttpService:JSONEncode({sent_at=DateTime.now():ToIsoDate()}),
+		HttpService:JSONEncode({
+			type = "log",
+			["item_count"] = #tempPayload,
+			content_type = "application/vnd.sentry.items.log+json"
+		}),
+		HttpService:JSONEncode({items=tempPayload})
+	}
+
+	RequestAsync({
+		Url = self.BaseUrl .. "envelope/",
+		Method = "POST",
+		Headers = {
+			["Content-Type"] = "application/x-sentry-envelope",
+			["X-Sentry-Auth"] = self.AuthHeader
+		},
+		
+		Body = table.concat(bodyData, "\n"),
+	})
+	tempPayload = {};
+	lockLogsTable = false;
+end
+function Module:CaptureLog(LogPayload: Defaults.StructLog)
+	if not self.InitThread then
+		return self:_Relay("CaptureLog", LogPayload)
+	end
+	-- Table Lock prevents race-condition that might cause item(s)
+	-- to be inserted between item_count and body appending
+	-- during flushLogs process
+	if(lockLogsTable) then return; end
+	table.insert(tempPayload, LogPayload);
+	timerSend:start(5)
+	if(#tempPayload >= 20) then
+		timerSend:cancel()
+		Module:flushLogs()
+	end
 end
 
 function Module:CaptureEnvelope(Payload)
