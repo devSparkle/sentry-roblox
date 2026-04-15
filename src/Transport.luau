@@ -1,8 +1,8 @@
 --!nocheck
 --// Initialization
 
-local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
 --[=[
 	@class Transport
@@ -26,7 +26,7 @@ function Module:_GetRelay(): RemoteFunction | BindableFunction | nil
 	if RunService:IsClient() then
 	--	return script:FindFirstChild("ClientRelay"):: RemoteFunction
 	else
-		return script:FindFirstChild("ServerRelay"):: BindableFunction
+		return script:FindFirstChild("ServerRelay") :: BindableFunction
 	end
 	
 	return
@@ -34,7 +34,9 @@ end
 
 function Module:_Relay(...)
 	local Relay = self:_GetRelay()
-	if not Relay then return end
+	if not Relay then
+		return
+	end
 	
 	if Relay:IsA("RemoteFunction") then
 		Relay:InvokeServer(...)
@@ -56,14 +58,18 @@ local function RequestAsync(...)
 	end
 	
 	local CallSuccess, Response = pcall(HttpService.RequestAsync, HttpService, ...)
-	Response = (if CallSuccess then Response else {
-		Body = "",
-		Headers = {},
-		
-		StatusCode = 400,
-		StatusMessage = "InternalError",
-		Success = false,
-	})
+	Response = (
+		if CallSuccess
+			then Response
+			else {
+				Body = "",
+				Headers = {},
+				
+				StatusCode = 400,
+				StatusMessage = "InternalError",
+				Success = false,
+			}
+	)
 	
 	local RateLimitReset = Response.Headers[string.lower("X-Sentry-Rate-Limit-Reset")]
 	local Remaining = (Response.Headers[string.lower("X-Sentry-Rate-Limit-Remaining")] or math.huge)
@@ -87,7 +93,7 @@ function Module:CaptureEvent(EncodedPayload)
 		Method = "POST",
 		Headers = {
 			["Content-Type"] = "application/json",
-			["X-Sentry-Auth"] = self.AuthHeader
+			["X-Sentry-Auth"] = self.AuthHeader,
 		},
 		
 		Body = EncodedPayload,
@@ -100,29 +106,35 @@ function Module:CaptureEnvelope(Payload)
 	end
 	
 	local EncodedPayload = HttpService:JSONEncode(Payload)
-	local Envelope = HttpService:JSONEncode({event_id = HttpService:GenerateGUID(false)})
-	local Item = HttpService:JSONEncode({type = "session", length = #EncodedPayload})
+	local Envelope = HttpService:JSONEncode({
+		event_id = HttpService:GenerateGUID(false),
+	})
+	local Item = HttpService:JSONEncode({ type = "session", length = #EncodedPayload })
 	
 	return RequestAsync({
 		Url = self.BaseUrl .. "envelope/",
 		Method = "POST",
 		Headers = {
 			["Content-Type"] = "application/x-sentry-envelope",
-			["X-Sentry-Auth"] = self.AuthHeader
+			["X-Sentry-Auth"] = self.AuthHeader,
 		},
 		
-		Body = table.concat({Envelope, Item, EncodedPayload}, "\n"),
+		Body = table.concat({ Envelope, Item, EncodedPayload }, "\n"),
 	})
 end
 
 function Module:Init(Options, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT)
-	assert(not script:FindFirstChildWhichIsA("BindableFunction"), "The SentrySDK Transport can only be initialized once!")
+	assert(
+		not script:FindFirstChildWhichIsA("BindableFunction"),
+		"The SentrySDK Transport can only be initialized once!"
+	)
 	assert(not script:FindFirstChildWhichIsA("RemoteFunction"), "The SentrySDK Transport can only be initialized once!")
 	
 	self.InitThread = true
 	
 	do --/ Process Options
-		local Scheme, PublicKey, Authority, ProjectId = string.match(Options.DSN or "", "^([^:]+)://([^:]+)@([^/]+)/(.+)$")
+		local Scheme, PublicKey, Authority, ProjectId =
+			string.match(Options.DSN or "", "^([^:]+)://([^:]+)@([^/]+)/(.+)$")
 		
 		assert(Scheme, "Invalid Sentry DSN: Scheme not found.")
 		assert(string.match(string.lower(Scheme), "^https?$"), "Invalid Sentry DSN: Scheme not valid.")
@@ -131,10 +143,13 @@ function Module:Init(Options, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT)
 		assert(Authority, "Invalid Sentry DSN: Authority not found.")
 		assert(ProjectId, "Invalid Sentry DSN: Project ID not found.")
 		
+		self.DSN = Options.DSN
 		self.BaseUrl = string.format("%s://%s/api/%s/", Scheme, Authority, ProjectId)
 		self.AuthHeader = string.format(
 			"Sentry sentry_key=%s,sentry_version=%d,sentry_client=%s",
-			PublicKey, SENTRY_PROTOCOL_VERSION, SENTRY_CLIENT
+			PublicKey,
+			SENTRY_PROTOCOL_VERSION,
+			SENTRY_CLIENT
 		)
 	end
 	
