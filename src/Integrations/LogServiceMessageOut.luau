@@ -27,17 +27,17 @@ function Module:SetupOnce(AddGlobalEventProcessor, CurrentHub)
 		if CurrentHub.Options then
 			local CaptureFilterMode = CurrentHub.Options.CaptureFilterMode
 			if
-				CaptureFilterMode == "whitelist"
-				and CurrentHub.Options.WhitelistOutput
-				and not has_match(CurrentHub.Options.WhitelistOutput, Message)
+				CaptureFilterMode == "include"
+				and CurrentHub.Options.AllowlistOutput
+				and not has_match(CurrentHub.Options.AllowlistOutput, Message)
 			then
 				return
 			end
 			
 			if
-				CaptureFilterMode == "blacklist"
-				and CurrentHub.Options.BlacklistOutput
-				and has_match(CurrentHub.Options.BlacklistOutput, Message)
+				CaptureFilterMode == "exclude"
+				and CurrentHub.Options.DenylistOutput
+				and has_match(CurrentHub.Options.DenylistOutput, Message)
 			then
 				return
 			end

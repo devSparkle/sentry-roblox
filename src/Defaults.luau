@@ -57,9 +57,9 @@ export type Options = {
 	Transport: unknown,
 	ShutdownTimeout: number?,
 	
-	CaptureFilterMode: "whitelist" | "blacklist"?,
-	WhitelistOutput: {string}?,
-	BlacklistOutput: {string}?,
+	CaptureFilterMode: "include" | "exclude"?,
+	AllowlistOutput: {string}?,
+	DenylistOutput: {string}?,
 }
 
 Module.Options = {
