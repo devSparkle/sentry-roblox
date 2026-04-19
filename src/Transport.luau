@@ -101,7 +101,7 @@ local TimerSend = Utils.Timer.new(function() Module:FlushLogs() end)
 function Module:FlushLogs()
 	if(#TempPayload == 0) then return; end
 	if(RunService:IsClient()) then return; end
-	TimerSend:cancel()
+	TimerSend:Cancel()
 	LockLogsTable = true;
 
 	local bodyData = {
@@ -137,9 +137,9 @@ function Module:CaptureLog(LogPayload: Defaults.StructLog)
 	-- during FlushLogs process
 	if(LockLogsTable) then return; end
 	table.insert(TempPayload, LogPayload);
-	TimerSend:start(5)
+	TimerSend:Start(5)
 	if(#TempPayload >= 20) then
-		TimerSend:cancel()
+		TimerSend:Cancel()
 		Module:FlushLogs()
 	end
 end

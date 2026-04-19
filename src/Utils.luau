@@ -9,7 +9,7 @@ function Timer.new(callback)
     }, Timer)
 end
 
-function Timer:start(delaySeconds)
+function Timer:Start(delaySeconds)
     self._token += 1
     local token = self._token
     self._alive = true
@@ -22,13 +22,13 @@ function Timer:start(delaySeconds)
     end)
 end
 
-function Timer:cancel()
+function Timer:Cancel()
     self._alive = false
 end
 
 
 
-function flattenTable(tbl, prefix, out)
+function FlattenTable(tbl, prefix, out)
     out = out or {}
     prefix = prefix or ""
 
@@ -36,7 +36,7 @@ function flattenTable(tbl, prefix, out)
         local fullKey = prefix ~= "" and (prefix .. "." .. key) or key
 
         if typeof(value) == "table" then
-            flattenTable(value, fullKey, out)
+            FlattenTable(value, fullKey, out)
         else
             out[fullKey] = value
         end
@@ -45,7 +45,7 @@ function flattenTable(tbl, prefix, out)
     return out
 end
 
-function valToAttrVal(val)
+function ValToAttrVal(val)
     local oType = type(val);
 	if(oType ~= "string" and oType ~= "number" and oType ~= "boolean") then
 		val = tostring(val); -- Force string if it's other than number or bool
@@ -63,6 +63,6 @@ end
 
 return {
     Timer=Timer;
-    flattenTable=flattenTable;
-    valToAttrVal=valToAttrVal;
+    FlattenTable=FlattenTable;
+    ValToAttrVal=ValToAttrVal;
 }

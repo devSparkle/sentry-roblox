@@ -28,9 +28,9 @@ local Logger = {}
 	@param Scope Scope
 ]=]
 function Hub.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?)
-	local mainTab = setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Hub})
-	mainTab.Logger = setmetatable({Hub=mainTab}, {__index = Logger})
-	return mainTab
+	local MainTab = setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Hub})
+	MainTab.Logger = setmetatable({Hub=MainTab}, {__index = Logger})
+	return MainTab
 end
 
 
@@ -140,36 +140,36 @@ function Logger:CaptureLog(Body: string | Defaults.LogParamFormat, Level: Defaul
 	-- Convert Formatted body to payload
 	if typeof(LogPayload.body) == "table" then
 		LogPayload.body = string.format(Body.template, table.unpack(Body.params));
-		LogPayload.attributes["sentry.message.template"] = Utils.valToAttrVal(Body.template)
+		LogPayload.attributes["sentry.message.template"] = Utils.ValToAttrVal(Body.template)
 		for i,v in ipairs(Body.params) do
-			LogPayload.attributes["sentry.message.parameter."..i-1] = Utils.valToAttrVal(v)
+			LogPayload.attributes["sentry.message.parameter."..i-1] = Utils.ValToAttrVal(v)
 		end
 	end
 
 	-- Copy over attribute table
 	if Attributes then
 		for k,v in pairs(Attributes) do
-			LogPayload.attributes[k] = Utils.valToAttrVal(v)
+			LogPayload.attributes[k] = Utils.ValToAttrVal(v)
 		end
 	end
 
 	-- Copy over user attributes
 	if self.Hub.Scope.user then
-		local userObj = Utils.flattenTable(self.Hub.Scope.user, "user")
+		local userObj = Utils.FlattenTable(self.Hub.Scope.user, "user")
 		for k,v in pairs(userObj) do
-			LogPayload.attributes[k] = Utils.valToAttrVal(v);
+			LogPayload.attributes[k] = Utils.ValToAttrVal(v);
 		end
 	end
 
 	-- Server/Client ctx
 	if self.Hub.Scope.Logger then
-		LogPayload.attributes.Logger = Utils.valToAttrVal(self.Hub.Scope.Logger);
+		LogPayload.attributes.Logger = Utils.ValToAttrVal(self.Hub.Scope.Logger);
 	end
 
 	-- Copy over Scope Attributes
 	if(self.Hub.Scope.attributes) then
 		for k,v in pairs(self.Hub.Scope.attributes) do
-			LogPayload.attributes[k] = Utils.valToAttrVal(v)
+			LogPayload.attributes[k] = Utils.ValToAttrVal(v)
 		end
 	end
 
