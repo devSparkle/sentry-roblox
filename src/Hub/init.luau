@@ -19,7 +19,7 @@ local Utils = require(script.Parent.Utils)
 	known as async local or context local).
 ]=]
 local Hub = {}
-local logger = {}
+local Logger = {}
 
 --// Functions
 
@@ -29,7 +29,7 @@ local logger = {}
 ]=]
 function Hub.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?)
 	local mainTab = setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Hub})
-	mainTab.logger = setmetatable({Hub=mainTab}, {__index = logger})
+	mainTab.Logger = setmetatable({Hub=mainTab}, {__index = Logger})
 	return mainTab
 end
 
@@ -76,61 +76,61 @@ end
 
 
 --[=[
-  @param body string or logger.fmt content
+  @param body string or Logger.fmt content
   @param attribute any key/value (string, number, or bool)
 ]=]
-function logger:debug(body: string | Defaults.LogParamFormat, attribute: {[string]: any}?)
-	return self:CaptureLog(body, "debug", attribute);
+function Logger:Debug(Body: string | Defaults.LogParamFormat, Attribute: {[string]: any}?)
+	return self:CaptureLog(Body, "debug", Attribute);
 end
 
 --[=[
-  @param body string or logger.fmt content
+  @param body string or Logger.fmt content
   @param attribute any key/value (string, number, or bool)
 ]=]
-function logger:info(body: string | Defaults.LogParamFormat, attribute: {[string]: any}?)
-	return self:CaptureLog(body, "info", attribute);
+function Logger:Info(Body: string | Defaults.LogParamFormat, Attribute: {[string]: any}?)
+	return self:CaptureLog(Body, "info", Attribute);
 end
 
 --[=[
-  @param body string or logger.fmt content
+  @param body string or Logger.fmt content
   @param attribute any key/value (string, number, or bool)
 ]=]
-function logger:warn(body: string | Defaults.LogParamFormat, attribute: {[string]: any}?)
-	return self:CaptureLog(body, "warn", attribute);
+function Logger:Warn(Body: string | Defaults.LogParamFormat, Attribute: {[string]: any}?)
+	return self:CaptureLog(Body, "warn", Attribute);
 end
 
 --[=[
-  @param body string or logger.fmt content
+  @param body string or Logger.fmt content
   @param attribute any key/value (string, number, or bool)
 ]=]
-function logger:error(body: string | Defaults.LogParamFormat, attribute: {[string]: any}?)
-	return self:CaptureLog(body, "error", attribute);
+function Logger:Error(Body: string | Defaults.LogParamFormat, Attribute: {[string]: any}?)
+	return self:CaptureLog(Body, "error", Attribute);
 end
 
 --[=[
 	@param template 'string.format' text template
 	@param ... 'string.format' parameters to complete the template
 ]=]
-function logger:fmt(template: string, ...: string): Defaults.LogParamFormat
+function Logger:fmt(Template: string, ...: string): Defaults.LogParamFormat
 	local content = {}
-	content.template = template
+	content.template = Template
 	content.params = {...}
 	return content;
 end
 
 --[=[
-  @param body string or logger.fmt content
+  @param body string or Logger.fmt content
   @param attributes custom log metadata (key/value)
   @param level level
 ]=]
-function logger:CaptureLog(body: string | Defaults.LogParamFormat, level: Defaults.Level, attributes: {[string]: any}?)
-	if not body then return; end
+function Logger:CaptureLog(Body: string | Defaults.LogParamFormat, Level: Defaults.Level, Attributes: {[string]: any}?)
+	if not Body then return; end
 	-- Byapss for client since it doesn't have init options
-	if not (self.Hub.Options and self.Hub.Options.enableLogs) and not RunService:IsClient() then return; end
+	if not (self.Hub.Options and self.Hub.Options.EnableLogs) and not RunService:IsClient() then return; end
 	local LogPayload = {
 		timestamp = DateTime.now().UnixTimestamp;
-		level = level or "info"; -- set default level if needed
-		body = body;
+		level = Level or "info"; -- set default level if needed
+		body = Body;
 		attributes = {
 			["sentry.environment"] = self.Hub.Options and self.Hub.Options.Environment;
 			["sentry.release"] = self.Hub.Options and self.Hub.Options.Release;
@@ -139,16 +139,16 @@ function logger:CaptureLog(body: string | Defaults.LogParamFormat, level: Defaul
 
 	-- Convert Formatted body to payload
 	if typeof(LogPayload.body) == "table" then
-		LogPayload.body = string.format(body.template, table.unpack(body.params));
-		LogPayload.attributes["sentry.message.template"] = Utils.valToAttrVal(body.template)
-		for i,v in ipairs(body.params) do
+		LogPayload.body = string.format(Body.template, table.unpack(Body.params));
+		LogPayload.attributes["sentry.message.template"] = Utils.valToAttrVal(Body.template)
+		for i,v in ipairs(Body.params) do
 			LogPayload.attributes["sentry.message.parameter."..i-1] = Utils.valToAttrVal(v)
 		end
 	end
 
 	-- Copy over attribute table
-	if attributes then
-		for k,v in pairs(attributes) do
+	if Attributes then
+		for k,v in pairs(Attributes) do
 			LogPayload.attributes[k] = Utils.valToAttrVal(v)
 		end
 	end
@@ -162,8 +162,8 @@ function logger:CaptureLog(body: string | Defaults.LogParamFormat, level: Defaul
 	end
 
 	-- Server/Client ctx
-	if self.Hub.Scope.logger then
-		LogPayload.attributes.logger = Utils.valToAttrVal(self.Hub.Scope.logger);
+	if self.Hub.Scope.Logger then
+		LogPayload.attributes.Logger = Utils.valToAttrVal(self.Hub.Scope.Logger);
 	end
 
 	-- Copy over Scope Attributes
@@ -177,12 +177,12 @@ function logger:CaptureLog(body: string | Defaults.LogParamFormat, level: Defaul
 end
 
 --[=[
-	This is internal method. Please use the Hub.logger table to send sentry formatted log
+	This is internal method. Please use the Hub.Logger table to send sentry formatted log
 	or customize LogServiceMessageOut integration instead 
 ]=]
 function Hub:_CaptureLog(payload)
-	if self.Options and self.Options.beforeSendLog then
-		local newPayload = self.Options.beforeSendLog(payload);
+	if self.Options and self.Options.BeforeSendLog then
+		local newPayload = self.Options.BeforeSendLog(payload);
 		if newPayload == nil then return; end
 		return self.Client:CaptureLog(newPayload, self.Scope)
 	end

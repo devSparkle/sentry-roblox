@@ -59,14 +59,14 @@ end
 	The client is disabled after this method is called.
 ]=]
 function Client:Close(Timeout: number?)
-	Transport:flushLogs()
+	Transport:FlushLogs()
 end
 
 --[=[
 	Same as close difference is that the client is NOT disposed after invocation.
 ]=]
 function Client:Flush(Timeout: number?)
-	Transport:flushLogs()
+	Transport:FlushLogs()
 end
 
 --[=[

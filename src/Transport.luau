@@ -95,23 +95,23 @@ function Module:CaptureEvent(EncodedPayload)
 	})
 end
 
-local tempPayload = {}
-local lockLogsTable = false;
-local timerSend = Utils.Timer.new(function() Module:flushLogs() end)
-function Module:flushLogs()
-	if(#tempPayload == 0) then return; end
+local TempPayload = {}
+local LockLogsTable = false;
+local TimerSend = Utils.Timer.new(function() Module:FlushLogs() end)
+function Module:FlushLogs()
+	if(#TempPayload == 0) then return; end
 	if(RunService:IsClient()) then return; end
-	timerSend:cancel()
-	lockLogsTable = true;
+	TimerSend:cancel()
+	LockLogsTable = true;
 
 	local bodyData = {
 		HttpService:JSONEncode({sent_at=DateTime.now():ToIsoDate()}),
 		HttpService:JSONEncode({
 			type = "log",
-			["item_count"] = #tempPayload,
+			["item_count"] = #TempPayload,
 			content_type = "application/vnd.sentry.items.log+json"
 		}),
-		HttpService:JSONEncode({items=tempPayload})
+		HttpService:JSONEncode({items=TempPayload})
 	}
 
 	RequestAsync({
@@ -124,22 +124,23 @@ function Module:flushLogs()
 		
 		Body = table.concat(bodyData, "\n"),
 	})
-	tempPayload = {};
-	lockLogsTable = false;
+	TempPayload = {};
+	LockLogsTable = false;
 end
 function Module:CaptureLog(LogPayload: Defaults.StructLog)
 	if not self.InitThread then
-		return self:_Relay("CaptureLog", LogPayload)
+		self:_Relay("CaptureLog", LogPayload)
+		return
 	end
 	-- Table Lock prevents race-condition that might cause item(s)
 	-- to be inserted between item_count and body appending
-	-- during flushLogs process
-	if(lockLogsTable) then return; end
-	table.insert(tempPayload, LogPayload);
-	timerSend:start(5)
-	if(#tempPayload >= 20) then
-		timerSend:cancel()
-		Module:flushLogs()
+	-- during FlushLogs process
+	if(LockLogsTable) then return; end
+	table.insert(TempPayload, LogPayload);
+	TimerSend:start(5)
+	if(#TempPayload >= 20) then
+		TimerSend:cancel()
+		Module:FlushLogs()
 	end
 end
 

@@ -21,8 +21,8 @@ type Filter<T> = (T, Hint) -> (T?)
 	.Release string?
 	.Environment string?
 
-	.enableLogs boolean? -- Whether to enable sentry's new structured logging feature
-	.beforeSendLog ((log: StructLog) -> StructLog)? -- Enables log content transform/removal before sending it to ingest.
+	.EnableLogs boolean? -- Whether to enable sentry's new structured logging feature
+	.BeforeSendLog ((log: StructLog) -> StructLog | nil)? -- Enables log content transform/removal before sending it to ingest.
 	-- WARNING: Do not use print/warn function inside beforeSendLog as it may conflict with LogServiceMessageOut.
 	
 	.SampleRate number?
@@ -59,8 +59,8 @@ export type Options = {
 	BeforeBreadcrumb: Filter<unknown>?,
 
 -- Logging stuff
-	enableLogs: boolean?,
-	beforeSendLog: ((log: StructLog) -> StructLog)?,
+	EnableLogs: boolean?,
+	BeforeSendLog: ((log: StructLog) -> StructLog | nil)?,
 
 	
 	Transport: unknown,
@@ -92,7 +92,7 @@ Module.Options = {
 	
 	WithLocals = true,
 
-	enableLogs = false,
+	EnableLogs = false,
 	
 	Transport = require(script.Parent:WaitForChild("Transport")),
 	ShutdownTimeout = 2,

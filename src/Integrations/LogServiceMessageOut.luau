@@ -15,11 +15,11 @@ function Module:SetupOnce(AddGlobalEventProcessor, CurrentHub)
 		end
 		
 		if MessageType == Enum.MessageType.MessageWarning then
-			CurrentHub.logger:warn(Message, {origin="LogServiceMessageOut"})
+			CurrentHub.Logger:Warn(Message, {origin="LogServiceMessageOut"})
 	--	elseif MessageType == Enum.MessageType.MessageInfo then
-	--		CurrentHub.logger:info(Message, {origin="LogServiceMessageOut"})
+	--		CurrentHub.Logger:Info(Message, {origin="LogServiceMessageOut"})
 	--	elseif MessageType == Enum.MessageType.MessageOutput then
-	--		CurrentHub.logger:debug(Message, {origin="LogServiceMessageOut"})
+	--		CurrentHub.Logger:Debug(Message, {origin="LogServiceMessageOut"})
 		end
 	end)
 end

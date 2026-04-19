@@ -154,7 +154,7 @@ end
 
 --[=[
 ]=]
-function Scope:setAttributes(attributes: {string})
+function Scope:SetAttributes(attributes: {string})
 	for k,v in pairs(attributes) do
 		self.attributes[k] = v
 	end
@@ -162,7 +162,7 @@ end
 
 --[=[
 ]=]
-function Scope:removeAttribute(attribute: string)
+function Scope:RemoveAttribute(attribute: string)
 	if(self.attributes[attribute]) then
 		self.attributes[attribute] = nil;
 	end
