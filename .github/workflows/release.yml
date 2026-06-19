@@ -12,7 +12,8 @@ jobs:
     
     with:
       ROBLOX_ASSETID: 11721929587
-    
-    secrets: inherit
+    secrets:
+      WALLY_AUTH: ${{ secrets.WALLY_AUTH }}
+      ROBLOX_AUTH: ${{ secrets.ROBLOX_AUTH }}
     permissions:
         contents: write
