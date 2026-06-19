@@ -215,4 +215,9 @@ function Hub:EndSession()
 	})
 end
 
+--// Exports
+
+export type Client = ClientClass.Client
+export type Scope = ScopeClass.Scope
+
 return Hub

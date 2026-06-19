@@ -8,10 +8,39 @@ Module.Name = script.Name
 
 --// Functions
 
+local function has_match(list: { string }, message: string): boolean
+	for _, pattern in list do
+		if string.match(message, pattern) or string.find(message, pattern) then
+			return true
+		end
+	end
+	
+	return false
+end
+
 function Module:SetupOnce(AddGlobalEventProcessor, CurrentHub)
 	LogService.MessageOut:Connect(function(Message, MessageType)
 		if string.find(Message, "SentrySDK") then
 			return
+		end
+		
+		if CurrentHub.Options then
+			local CaptureFilterMode = CurrentHub.Options.CaptureFilterMode
+			if
+				CaptureFilterMode == "include"
+				and CurrentHub.Options.AllowlistOutput
+				and not has_match(CurrentHub.Options.AllowlistOutput, Message)
+			then
+				return
+			end
+			
+			if
+				CaptureFilterMode == "exclude"
+				and CurrentHub.Options.DenylistOutput
+				and has_match(CurrentHub.Options.DenylistOutput, Message)
+			then
+				return
+			end
 		end
 		
 		if MessageType == Enum.MessageType.MessageWarning then
