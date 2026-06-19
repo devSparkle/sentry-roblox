@@ -1,6 +1,6 @@
 {
-  "name": "SentrySDK",
-  "tree": {
-    "$path": "src"
-  }
+	"name": "SentrySDK",
+	"tree": {
+		"$path": "src"
+	}
 }
