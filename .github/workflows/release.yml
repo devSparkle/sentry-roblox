@@ -10,6 +10,9 @@ jobs:
   workflow:
     uses: ungms/.github/.github/workflows/roblox.yml@main
     
+    with:
+      ROBLOX_ASSETID: 11721929587
+    
     secrets: inherit
     permissions:
         contents: write
