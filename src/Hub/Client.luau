@@ -44,6 +44,11 @@ function Client:CaptureEvent(Event, Hint: {[string]: any}, Scope)
 	if not Event then
 		return
 	end
+
+	-- Drop Inapplicable data
+	if Event["attributes"] ~= nil then
+		Event["attributes"] = nil;
+	end
 	
 	local EncodeSuccess, EncodedPayload = pcall(HttpService.JSONEncode, HttpService, Event)
 	if not EncodeSuccess then return end
