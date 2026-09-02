@@ -44,6 +44,11 @@ function Client:CaptureEvent(Event, Hint: {[string]: any}, Scope)
 	if not Event then
 		return
 	end
+
+	-- Drop Inapplicable data
+	if Event["attributes"] ~= nil then
+		Event["attributes"] = nil;
+	end
 	
 	local EncodeSuccess, EncodedPayload = pcall(HttpService.JSONEncode, HttpService, Event)
 	if not EncodeSuccess then return end
@@ -59,14 +64,30 @@ end
 	The client is disabled after this method is called.
 ]=]
 function Client:Close(Timeout: number?)
-	
+	Transport:FlushLogs()
 end
 
 --[=[
 	Same as close difference is that the client is NOT disposed after invocation.
 ]=]
 function Client:Flush(Timeout: number?)
+	Transport:FlushLogs()
+end
+
+--[=[
+  Handles incoming events from hub and allow custom levels/scopes if needed
+]=]
+function Client:CaptureLog(LogPayload: Defaults.StructLog, Scope)
+	LogPayload["trace_id"] = string.gsub(HttpService:GenerateGUID(false), "-", "");
+	if self.SDK_INTERFACE then
+		LogPayload.attributes["sentry.sdk.name"] = self.SDK_INTERFACE.name;
+		LogPayload.attributes["sentry.sdk.version"] = self.SDK_INTERFACE.version;
+	end
 	
+
+	-- @TODO: Apply scope attributes afterward when that is done lol...
+	return Transport:CaptureLog(LogPayload)
+
 end
 
 export type Client = typeof(Client.new())
