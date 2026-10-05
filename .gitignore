@@ -1,4 +1,13 @@
-rbxlx-to-rojo.log
-*.rbxm
+build/
+roblox_packages/
+lune_packages/
+.pesde/
 
 sourcemap.json
+globalTypes.d.luau
+package.tar.gz
+*.rbxm
+rbxlx-to-rojo.log
+
+AGENTS.md
+.mcp.json

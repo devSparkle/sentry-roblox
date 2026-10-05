@@ -1,0 +1,13 @@
+std = "roblox"
+
+exclude = [
+	"build",
+	"roblox_packages",
+	"lune_packages",
+	".pesde",
+	"scripts",
+	"test",
+]
+
+[lints]
+multiple_statements = "allow"

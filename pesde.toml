@@ -1,0 +1,43 @@
+name = "spiraljng/sentry_roblox"
+version = "2.0.0"
+description = "An unofficial Sentry SDK for Roblox"
+license = "BSD-2-Clause"
+authors = ["spiraljng"]
+repository = "https://github.com/spiraljng/sentry-roblox"
+
+includes = [
+	"pesde.toml",
+	"README.md",
+	"LICENSE",
+	"src/**/*.luau",
+	"src/**/*.json",
+]
+
+[indices]
+default = "https://github.com/pesde-pkg/index"
+
+[target]
+environment = "roblox"
+lib = "src/init.luau"
+build_files = ["src"]
+
+[scripts]
+version-stamp = "scripts/Version/Stamp.luau"
+version-check = "scripts/Version/Check.luau"
+version-tag = "scripts/Version/Tag.luau"
+wally-generate = "scripts/Wally/Generate.luau"
+wally-check = "scripts/Wally/Check.luau"
+sync = "scripts/Sync.luau"
+verify = "scripts/Verify.luau"
+test = "scripts/Test.luau"
+analyze = "scripts/Analyze.luau"
+build = "scripts/Build.luau"
+sourcemap = "scripts/Sourcemap.luau"
+
+[engines]
+pesde = "^0.7.3"
+lune = "^0.10.4"
+
+[dev_dependencies]
+tiniest = { name = "ewdev/tiniest", version = "^0.0.0-20251120T191744Z" }
+tiniest_lune = { name = "ewdev/tiniest", version = "^0.0.0-20251120T191744Z", target = "lune" }
