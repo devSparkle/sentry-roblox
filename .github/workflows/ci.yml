@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ROKIT_VERSION: "1.2.0"
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Install Rokit
+        run: |
+          curl -sL -o "$RUNNER_TEMP/rokit.zip" \
+            "https://github.com/rojo-rbx/rokit/releases/download/v${ROKIT_VERSION}/rokit-${ROKIT_VERSION}-linux-x86_64.zip"
+          unzip -o -q "$RUNNER_TEMP/rokit.zip" -d "$RUNNER_TEMP/rokit"
+          echo "$RUNNER_TEMP/rokit" >> "$GITHUB_PATH"
+
+      - name: Install tools
+        run: rokit install --no-trust-check
+
+      - name: Install dependencies
+        run: pesde install
+
+      - name: Check version and manifest drift
+        run: pesde run verify
+
+      - name: Test
+        run: pesde run test
+
+      - name: Check formatting
+        run: stylua --check src scripts test
+
+      - name: Lint
+        run: selene src
+
+      - name: Typecheck
+        run: pesde run analyze
+
+      - name: Build model file
+        run: pesde run build
+
+      - name: Upload model file
+        uses: actions/upload-artifact@v7
+        with:
+          name: SentryRoblox
+          path: build/SentryRoblox.rbxm
+          if-no-files-found: error

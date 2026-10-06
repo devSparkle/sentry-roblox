@@ -1,19 +1,80 @@
-name: "Roblox"
+name: Release
 
 on:
   push:
-    paths:
-      - "wally.toml"
+    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release, for example v1.2.2"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ROKIT_VERSION: "1.2.0"
 
 jobs:
-  workflow:
-    uses: ungms/.github/.github/workflows/roblox.yml@main
-    
-    with:
-      ROBLOX_ASSETID: 11721929587
-    secrets:
-      WALLY_AUTH: ${{ secrets.WALLY_AUTH }}
-      ROBLOX_AUTH: ${{ secrets.ROBLOX_AUTH }}
-    permissions:
-        contents: write
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install Rokit
+        run: |
+          curl -sL -o "$RUNNER_TEMP/rokit.zip" \
+            "https://github.com/rojo-rbx/rokit/releases/download/v${ROKIT_VERSION}/rokit-${ROKIT_VERSION}-linux-x86_64.zip"
+          unzip -o -q "$RUNNER_TEMP/rokit.zip" -d "$RUNNER_TEMP/rokit"
+          echo "$RUNNER_TEMP/rokit" >> "$GITHUB_PATH"
+
+      - name: Install tools
+        run: rokit install --no-trust-check
+
+      - name: Install dependencies
+        run: pesde install
+
+      - name: Resolve tag
+        id: tag
+        run: echo "name=${GITHUB_REF_NAME:-${{ inputs.tag }}}" >> "$GITHUB_OUTPUT"
+
+      - name: Check tag and manifest drift
+        run: pesde run verify -- "${{ steps.tag.outputs.name }}"
+
+      - name: Typecheck
+        run: pesde run analyze
+
+      - name: Build model file
+        run: pesde run build
+
+      - name: Verify the model file exists
+        run: test -s build/SentryRoblox.rbxm
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes
+          gh release upload "$TAG" build/SentryRoblox.rbxm --clobber
+
+      - name: Publish to pesde
+        env:
+          PESDE_TOKEN: ${{ secrets.PESDE_TOKEN }}
+        run: |
+          pesde auth login --token "$PESDE_TOKEN"
+          pesde publish --yes
+
+      - name: Publish to Wally
+        env:
+          WALLY_AUTH: ${{ secrets.WALLY_AUTH }}
+        run: wally publish

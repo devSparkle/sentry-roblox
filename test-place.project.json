@@ -1,0 +1,19 @@
+{
+	"name": "SentryTestPlace",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"SentryRoblox": {
+				"$path": "src"
+			},
+			"Packages": {
+				"$className": "Folder",
+				"$path": "roblox_packages"
+			}
+		},
+		"ServerScriptService": {
+			"$className": "ServerScriptService"
+		}
+	}
+}

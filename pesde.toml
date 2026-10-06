@@ -1,9 +1,9 @@
-name = "spiraljng/sentry_roblox"
+name = "spiraljng/sentryroblox"
 version = "2.0.0"
 description = "An unofficial Sentry SDK for Roblox"
 license = "BSD-2-Clause"
 authors = ["spiraljng"]
-repository = "https://github.com/spiraljng/sentry-roblox"
+repository = "https://github.com/spiraljng/sentryroblox"
 
 includes = [
 	"pesde.toml",
@@ -22,11 +22,6 @@ lib = "src/init.luau"
 build_files = ["src"]
 
 [scripts]
-version-stamp = "scripts/Version/Stamp.luau"
-version-check = "scripts/Version/Check.luau"
-version-tag = "scripts/Version/Tag.luau"
-wally-generate = "scripts/Wally/Generate.luau"
-wally-check = "scripts/Wally/Check.luau"
 sync = "scripts/Sync.luau"
 verify = "scripts/Verify.luau"
 test = "scripts/Test.luau"

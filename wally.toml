@@ -1,7 +1,10 @@
+# This file is generated from pesde.toml. Do not edit it by hand.
+# Run `pesde run sync` to rebuild it.
+
 [package]
-name = "devsparkle/sentry-roblox"
-description = "An unofficial Roblox SDK for Sentry.io"
-version = "1.2.2"
+name = "spiraljng/sentryroblox"
+description = "An unofficial Sentry SDK for Roblox"
+version = "2.0.0"
 license = "BSD-2-Clause"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
