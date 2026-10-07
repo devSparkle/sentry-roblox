@@ -1,0 +1,101 @@
+{
+	"name": "SentryExample",
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": {
+			"$className": "Workspace",
+			"Baseplate": {
+				"$className": "Part",
+				"$properties": {
+					"Size": [
+						512,
+						2,
+						512
+					],
+					"Position": [
+						0,
+						-1,
+						0
+					],
+					"Anchored": true,
+					"Locked": true,
+					"Material": "Grass",
+					"Color": [
+						0.35,
+						0.55,
+						0.3
+					],
+					"TopSurface": "Smooth",
+					"BottomSurface": "Smooth"
+				}
+			},
+			"SpawnLocation": {
+				"$className": "SpawnLocation",
+				"$properties": {
+					"Size": [
+						12,
+						1,
+						12
+					],
+					"Position": [
+						0,
+						0.5,
+						0
+					],
+					"Anchored": true,
+					"Neutral": true,
+					"Material": "SmoothPlastic",
+					"Color": [
+						0.55,
+						0.55,
+						0.6
+					],
+					"TopSurface": "Smooth"
+				}
+			}
+		},
+		"Lighting": {
+			"$className": "Lighting",
+			"$properties": {
+				"Ambient": [
+					0.4,
+					0.4,
+					0.45
+				],
+				"OutdoorAmbient": [
+					0.5,
+					0.5,
+					0.55
+				],
+				"ClockTime": 14,
+				"Brightness": 2
+			}
+		},
+		"HttpService": {
+			"$className": "HttpService",
+			"$properties": {
+				"HttpEnabled": true
+			}
+		},
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"SentryRoblox": {
+				"$path": "src"
+			},
+			"Data": {
+				"$path": "example/ReplicatedStorage"
+			}
+		},
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"$path": "example/ServerScriptService"
+		},
+		"StarterPlayer": {
+			"$className": "StarterPlayer",
+			"StarterPlayerScripts": {
+				"$className": "StarterPlayerScripts",
+				"$path": "example/StarterPlayerScripts"
+			}
+		}
+	}
+}
