@@ -1,4 +1,4 @@
-local Fs = require("@lune/fs")
+local fs = require("@lune/fs")
 local Serde = require("@lune/serde")
 
 export type Target = {
@@ -49,10 +49,10 @@ end
 function Manifest.Read(Path: string?): Shape
 	local ResolvedPath = Path or Manifest.Path
 
-	if not Fs.isFile(ResolvedPath) then error(`could not find {ResolvedPath}`) end
+	if not fs.isFile(ResolvedPath) then error(`could not find {ResolvedPath}`) end
 
 	local Success, Decoded = pcall(function()
-		return Serde.decode("toml", Fs.readFile(ResolvedPath))
+		return Serde.decode("toml", fs.readFile(ResolvedPath))
 	end)
 
 	if not Success then error(`${ResolvedPath} is not valid TOML`) end

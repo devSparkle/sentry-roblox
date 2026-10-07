@@ -1,28 +1,14 @@
 local fs = require("@lune/fs")
-local Process = require("@lune/process")
 
 local Exec = require("./Shared/Exec")
 local Manifest = require("./Shared/Manifest")
-local VersionFile = require("./Version/File")
 
-local ProjectFile = "build.project.json"
-local OutputDirectory = "build"
-local OutputName = "SentryRoblox.rbxm"
+local ProjectFile = "example.project.json"
+local Output = "example/SentryExample.rbxl"
 
 local ManifestData = Manifest.Read()
-local InSync, Message = VersionFile.Verify()
-
-if not InSync then
-	print(Message)
-	print("run the sync script before building")
-	Process.exit(1)
-end
 
 if not fs.isFile(ProjectFile) then error(`could not find {ProjectFile}`) end
-
-if not fs.isDir(OutputDirectory) then fs.writeDir(OutputDirectory) end
-
-local Output = `{OutputDirectory}/{OutputName}`
 
 Exec.Require("rojo", { "build", ProjectFile, "--output", Output })
 

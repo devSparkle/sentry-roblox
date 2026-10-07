@@ -1,4 +1,4 @@
-local Fs = require("@lune/fs")
+local fs = require("@lune/fs")
 
 local Manifest = require("../Shared/Manifest")
 
@@ -15,9 +15,9 @@ function File.Expected(Version: string): string
 end
 
 function File.Read(): string?
-	if not Fs.isFile(File.Path) then return nil end
+	if not fs.isFile(File.Path) then return nil end
 
-	return Fs.readFile(File.Path)
+	return fs.readFile(File.Path)
 end
 
 function File.Write(Version: string): boolean
@@ -25,7 +25,7 @@ function File.Write(Version: string): boolean
 
 	if File.Read() == Rendered then return false end
 
-	Fs.writeFile(File.Path, Rendered)
+	fs.writeFile(File.Path, Rendered)
 	return true
 end
 

@@ -13,6 +13,7 @@ local Specs = {
 	"Protocol",
 	"RateLimit",
 	"Scrubber",
+	"Table",
 	"Traceback",
 }
 

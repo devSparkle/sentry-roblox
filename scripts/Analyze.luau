@@ -1,4 +1,4 @@
-local Fs = require("@lune/fs")
+local fs = require("@lune/fs")
 local Net = require("@lune/net")
 local Process = require("@lune/process")
 
@@ -25,11 +25,11 @@ local function DownloadDefinitions()
 		error(`could not download the Roblox definitions (HTTP {Response.statusCode})`)
 	end
 
-	Fs.writeFile(DefinitionsPath, Response.body)
+	fs.writeFile(DefinitionsPath, Response.body)
 	print(`downloaded {DefinitionsPath}`)
 end
 
-if table.find(Process.args, "--refresh") or not Fs.isFile(DefinitionsPath) then DownloadDefinitions() end
+if table.find(Process.args, "--refresh") or not fs.isFile(DefinitionsPath) then DownloadDefinitions() end
 
 local SourcemapPath = Sourcemap.Generate()
 local Args = { "analyze", `--sourcemap={SourcemapPath}`, `--defs={DefinitionsPath}` }
@@ -38,7 +38,9 @@ for _, Pattern in Ignored do
 	table.insert(Args, `--ignore={Pattern}`)
 end
 
-table.insert(Args, "src")
+for _, Directory in { "src", "example" } do
+	table.insert(Args, Directory)
+end
 
 Exec.Require("luau-lsp", Args)
 
