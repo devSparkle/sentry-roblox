@@ -7,6 +7,8 @@ sourcemap.json
 globalTypes.d.luau
 package.tar.gz
 *.rbxm
+example/*.rbxl
+example/*.rbxlx
 rbxlx-to-rojo.log
 
 AGENTS.md

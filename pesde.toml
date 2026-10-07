@@ -27,6 +27,8 @@ verify = "scripts/Verify.luau"
 test = "scripts/Test.luau"
 analyze = "scripts/Analyze.luau"
 build = "scripts/Build.luau"
+example = "scripts/Example.luau"
+serve = "scripts/Serve.luau"
 sourcemap = "scripts/Sourcemap.luau"
 
 [engines]

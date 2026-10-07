@@ -42,13 +42,16 @@ jobs:
         run: pesde run test
 
       - name: Check formatting
-        run: stylua --check src scripts test
+        run: stylua --check src scripts test example
 
       - name: Lint
         run: selene src
 
       - name: Typecheck
         run: pesde run analyze
+
+      - name: Build example place
+        run: pesde run example
 
       - name: Build model file
         run: pesde run build
