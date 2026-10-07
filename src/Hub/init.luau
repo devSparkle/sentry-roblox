@@ -1,217 +1,241 @@
---!nocheck
---// Initialization
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 
 local Defaults = require(script.Parent:WaitForChild("Defaults"))
+local Types = require(script.Parent:WaitForChild("Types"))
 
 local ClientClass = require(script:WaitForChild("Client"))
 local ScopeClass = require(script:WaitForChild("Scope"))
 
---[=[
-	@class Hub
-	
-	The hub consists of a stack of clients and scopes.
-	
-	The SDK maintains two variables: The main hub (a global variable) and the current
-	hub (a variable local to the current thread or execution context, also sometimes
-	known as async local or context local).
-]=]
 local Hub = {}
+local Metatable = { __index = Hub }
 
---// Functions
+local InFlight = (setmetatable({}, { __mode = "k" }) :: any) :: { [thread]: boolean }
+local StudioDropReported = false
 
---[=[
-	@param Client Client
-	@param Scope Scope
-]=]
-function Hub.new(Client: ClientClass.Client?, Scope: ScopeClass.Scope?)
-	return setmetatable({Client = Client or ClientClass.new(), Scope = Scope or ScopeClass.new()}, {__index = Hub})
+function Hub.new(ClientInstance: Types.Client?, ScopeInstance: Types.Scope?, Options: Types.Options?): Types.Hub
+	local Stack: { Types.Scope } = {}
+
+	return setmetatable({
+		Client = ClientInstance or ClientClass.new(),
+		Scope = ScopeInstance or ScopeClass.new(),
+		Options = Options,
+
+		_scope_stack = Stack,
+	}, Metatable) :: any
 end
 
-
---[=[
-]=]
-function Hub:Clone()
-	return Hub.new(self.Client, self.Scope:Clone())
+function Hub.Clone(self: Types.Hub): Types.Hub
+	return Hub.new(self.Client, self.Scope:Clone(), self.Options)
 end
 
---[=[
-]=]
-function Hub:GetCurrentHub()
+function Hub.GetCurrentHub(self: Types.Hub): Types.Hub
 	return self
 end
 
---[=[
-	@param Event Event
-	@param Hint Hint
-]=]
-function Hub:CaptureEvent(Event: Defaults.Event, Hint)
-	if self.Options then
-		if self.Options.SampleRate == 0 then return end
-		if math.random() > self.Options.SampleRate then
+function Hub.CaptureEvent(self: Types.Hub, Event: Types.Event, Hint: Types.Hint?): any
+	if type(Event) ~= "table" then return end
+
+	local Thread = coroutine.running()
+
+	if InFlight[Thread] == true then return end
+
+	local Options = self.Options
+
+	if Options ~= nil then
+		local SampleRate = Options.SampleRate
+
+		if SampleRate ~= nil and (SampleRate <= 0 or math.random() > SampleRate) then return end
+
+		if Options.SendStudioEvents == false and RunService:IsStudio() then
+			if not StudioDropReported then
+				StudioDropReported = true
+
+				print("[SentryRoblox] dropping Studio events, set SendStudioEvents = true to test in Studio")
+			end
+
 			return
 		end
 	end
-	
-	return self.Client:CaptureEvent(Event, Hint, self.Scope)
+
+	InFlight[Thread] = true
+
+	local Success, Result = pcall(function()
+		return self.Client:CaptureEvent(Event, Hint, self.Scope, Options)
+	end)
+
+	InFlight[Thread] = nil
+
+	if not Success then
+		if Defaults.IsDebug(Options) then print(`[SentryRoblox] capture failed: {tostring(Result)}`) end
+
+		return
+	end
+
+	return Result
 end
 
---[=[
-	@param Level Level
-]=]
-function Hub:CaptureMessage(Message: string, Level: Defaults.Level? )
+function Hub.CaptureMessage(self: Types.Hub, Message: string, Level: Types.Level?): any
+	local Options = self.Options
+	local Hint: Types.Hint? = nil
+
+	if Options ~= nil and Options.AttachStacktrace == true then Hint = { traceback = debug.traceback() } end
+
 	return self:CaptureEvent({
 		level = Level or "info",
 		message = {
-			formatted = Message, --// TODO: Remove PII (player names, user IDs)
+			formatted = Message,
 			message = Message,
-		}
-	})
+		},
+	}, Hint)
 end
 
---[=[
-]=]
-function Hub:CaptureException(ErrorMessage: string?)
-	if ErrorMessage == nil then
-		return function(...)
-			return self:CaptureException(...)
-		end
-	end
-	
+function Hub.CaptureException(self: Types.Hub, ErrorMessage: string, TracebackText: string?): any
 	local Thread = coroutine.running()
-	local Event = {
-		exception = {{
-			type = ErrorMessage,
-			thread_id = string.gsub(tostring(Thread), "thread: ", ""),
-		}},
-	}
-	
-	local EnvTrace = {}
-	local EnvCount = 1
-	
-	if self.Options and self.Options.IncludeLocalVariables then
-		while pcall(function() table.insert(EnvTrace, EnvCount, getfenv(EnvCount)) end) do
-			EnvCount += 1
-		end
-	end
-	
-	local OriginEnv = EnvTrace[1]
-	
-	if OriginEnv then
-		if OriginEnv.script then
-			Event.exception[1].module = tostring(OriginEnv.script)
-			Event.exception[1].thread_id = Event.exception[1].thread_id
-		end
-	end
-	
-	return self:CaptureEvent(Event, {
+	local ThreadId = string.gsub(tostring(Thread), "thread: ", "")
+
+	return self:CaptureEvent({
+		exception = {
+			{
+				type = "Error",
+				value = ErrorMessage,
+				thread_id = ThreadId,
+				mechanism = {
+					type = "generic",
+					handled = true,
+				},
+			},
+		},
+	}, {
 		message = ErrorMessage,
-		traceback = debug.traceback(),
-		environments = EnvTrace,
-		memory_category = debug.getmemorycategory(),
-		
+		traceback = TracebackText or debug.traceback(),
+
 		thread = Thread,
-		thread_id = Event.exception[1].thread_id,
+		thread_id = ThreadId,
 	})
 end
 
+function Hub.ExceptionHandler(self: Types.Hub): (ErrorMessage: string?) -> ()
+	return function(ErrorMessage: string?): ()
+		local Message = ErrorMessage or "Unknown error"
 
---[=[
-]=]
-function Hub:PushScope()
-	local OldScope = self.Scope
-	local NewScope = setmetatable(Defaults:DeepCopy(OldScope), {__index = OldScope})
-	
-	self.Scope = NewScope
-	
-	return self, function()
-		self.Scope = OldScope
+		local TracebackText = debug.traceback()
+		local Deferred = self:Clone()
+
+		task.spawn(function()
+			Deferred:CaptureException(Message, TracebackText)
+		end)
 	end
 end
 
---[=[
-	@unreleased
-]=]
-function Hub:WithScope()
-	
+function Hub.PushScope(self: Types.Hub): () -> ()
+	table.insert(self._scope_stack, self.Scope)
+
+	self.Scope = self.Scope:Clone()
+
+	return function()
+		self:PopScope()
+	end
 end
 
---[=[
-	@unreleased
-]=]
-function Hub:PopScope()
-	self.Scope = getmetatable(self.Scope).__index
-	
+function Hub.PopScope(self: Types.Hub): Types.Hub
+	local Parent = table.remove(self._scope_stack)
+
+	if Parent ~= nil then self.Scope = Parent end
+
 	return self
 end
 
---[=[
-]=]
-function Hub:ConfigureScope(Callback: (ScopeClass.Scope) -> ())
+function Hub.WithScope(self: Types.Hub, Callback: (Types.Scope) -> ...any): ...any
+	local Restore = self:PushScope()
+	local Results = table.pack(pcall(Callback, self.Scope))
+
+	Restore()
+
+	if not Results[1] then error(Results[2], 0) end
+
+	return table.unpack(Results, 2, Results.n)
+end
+
+function Hub.ConfigureScope(self: Types.Hub, Callback: (Types.Scope) -> ()): Types.Hub
 	self.Scope:ConfigureScope(Callback)
-	
+
 	return self
 end
 
-
---[=[
-]=]
-function Hub:GetClient()
+function Hub.GetClient(self: Types.Hub): Types.Client
 	return self.Client
 end
 
---[=[
-	@param Client Client
-]=]
-function Hub:BindClient(Client: any?)
-	self.Client = Client
+function Hub.BindClient(self: Types.Hub, ClientInstance: Types.Client?): ()
+	self.Client = ClientInstance or ClientClass.new()
 end
 
---[=[
-]=]
-function Hub:UnbindClient()
-	return self:BindClient(nil)
+function Hub.UnbindClient(self: Types.Hub): ()
+	self:BindClient(nil)
 end
 
---[=[
-]=]
-function Hub:StartSession()
+function Hub.StartSession(self: Types.Hub): any
+	local Options = self.Options
+
+	if Options == nil or Options.Transport == nil then return end
+
+	local Existing = self.Scope._session
+	local Session: Types.Session
+
+	if Existing ~= nil then
+		Session = Existing
+	else
+		Session = {
+			sid = HttpService:GenerateGUID(false),
+			started = DateTime.now(),
+		}
+
+		self.Scope:SetSession(Session)
+	end
+
+	local User = self.Scope.user
 	local CurrentTime = DateTime.now()
-	
-	return self.Options.Transport:CaptureEnvelope({
-		sid = self.Scope.user.sid,
-		did = tostring(self.Scope.user.id),
+
+	return Options.Transport:CaptureEnvelope({
+		sid = Session.sid,
+		did = (if User ~= nil and User.id ~= nil then tostring(User.id) else nil),
 		seq = CurrentTime.UnixTimestampMillis,
 		timestamp = CurrentTime:ToIsoDate(),
-		started = self.Scope.user.started:ToIsoDate(),
+		started = Session.started:ToIsoDate(),
 		init = true,
-		
+
 		status = "ok",
-		
+
 		attrs = {
 			release = self.Scope.release,
 			environment = self.Scope.environment,
-		}
+		},
 	})
 end
 
---[=[
-]=]
-function Hub:EndSession()
+function Hub.EndSession(self: Types.Hub): any
+	local Session = self.Scope._session
+	local Options = self.Options
+
+	if Session == nil or Options == nil or Options.Transport == nil then return end
+
+	local User = self.Scope.user
 	local CurrentTime = DateTime.now()
-	
-	return self.Options.Transport:CaptureEnvelope({
-		sid = self.Scope.user.sid,
-		did = tostring(self.Scope.user.id),
+
+	return Options.Transport:CaptureEnvelope({
+		sid = Session.sid,
+		did = (if User ~= nil and User.id ~= nil then tostring(User.id) else nil),
 		seq = CurrentTime.UnixTimestampMillis,
 		timestamp = CurrentTime:ToIsoDate(),
-		started = self.Scope.user.started:ToIsoDate(),
-		
+		started = Session.started:ToIsoDate(),
+
 		status = "exited",
-		
+
 		attrs = {
 			release = self.Scope.release,
 			environment = self.Scope.environment,
-		}
+		},
 	})
 end
 

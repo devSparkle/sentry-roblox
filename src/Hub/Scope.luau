@@ -1,261 +1,266 @@
---!nocheck
---// Initialization
-
-local RunService = game:GetService("RunService")
-local PlayerService = game:GetService("Players")
+local Players = game:GetService("Players")
 local LocalizationService = game:GetService("LocalizationService")
 
-local Defaults = require(script.Parent.Parent:WaitForChild("Defaults"))
+local Types = require(script.Parent.Parent:WaitForChild("Types"))
+local Table = require(script.Parent.Parent:WaitForChild("Utility"):WaitForChild("Table"))
+local Processors = require(script.Parent:WaitForChild("Processors"))
 
---[=[
-	@class Scope
-	
-	A scope holds data that should implicitly be sent with Sentry events.
-	It can hold context data, extra parameters, level overrides, fingerprints etc.
-	
-	The user can modify the current scope (to set extra, tags, current user) through
-	the global function configure_scope. configure_scope takes a callback function
-	to which it passes the current scope.
-]=]
 local Scope = {}
-Scope.__index = Scope
+local Metatable = { __index = Scope }
 
---// Functions
+local BreadcrumbLimit = 100
+local BreadcrumbFilter: Types.Filter<Types.Breadcrumb>? = nil
+local IncludeIdentity = false
 
---[=[
-	@private
-	@param Function (Event, Hint) -> (Event)
-]=]
-function Scope._AddGlobalEventProcessor(Function)
-	local BindableFunction = Instance.new("BindableFunction")
-	
-	BindableFunction:SetAttribute("RunContext", if RunService:IsClient() then Enum.RunContext.Client else Enum.RunContext.Server)
-	BindableFunction.Name = "GlobalEventProcessor"
-	BindableFunction.OnInvoke = Function
-	BindableFunction.Parent = script
+local PreservedOnClear = { "release", "environment", "server_name", "dist", "logger" }
+
+function Scope.SetBreadcrumbLimit(Limit: number): ()
+	BreadcrumbLimit = math.max(math.floor(Limit), 0)
 end
 
---[=[
-]=]
-function Scope.new()
+function Scope.SetBreadcrumbFilter(Filter: Types.Filter<Types.Breadcrumb>?): ()
+	BreadcrumbFilter = Filter
+end
+
+function Scope.SetDefaultPII(Enabled: boolean): ()
+	IncludeIdentity = Enabled
+end
+
+function Scope.new(): Types.Scope
+	local Extra: { [string]: any } = {}
+	local Contexts: { [string]: { [string]: any } } = {}
+	local Tags: { [string]: string } = {}
+	local Breadcrumbs: { Types.Breadcrumb } = {}
+	local EventProcessors: { Types.Processor } = {}
+
+	local Level: Types.Level? = nil
+	local Transaction: string? = nil
+	local Fingerprint: { string }? = nil
+	local User: Types.User? = nil
+	local Release: string? = nil
+	local Environment: string? = nil
+	local ServerName: string? = nil
+	local Logger: string? = nil
+	local Dist: string? = nil
+	local Session: Types.Session? = nil
+
 	return setmetatable({
-		extra = {},
-		contexts = {},
-		tags = {},
-		
-		_event_processors = {},
-	}, Scope)
+		extra = Extra,
+		contexts = Contexts,
+		tags = Tags,
+		breadcrumbs = Breadcrumbs,
+
+		level = Level,
+		transaction = Transaction,
+		fingerprint = Fingerprint,
+		user = User,
+		release = Release,
+		environment = Environment,
+		server_name = ServerName,
+		logger = Logger,
+		dist = Dist,
+
+		_event_processors = EventProcessors,
+		_session = Session,
+	}, Metatable) :: any
 end
 
---[=[
-	The reason for this callback-based API is efficiency. If the SDK is disabled, it
-	should not invoke the callback, thus avoiding unnecessary work.
-]=]
-function Scope:ConfigureScope(Callback: (Scope) -> ())
+function Scope.ConfigureScope(self: Types.Scope, Callback: (Types.Scope) -> ()): ()
 	Callback(self)
 end
 
-
---[=[
-	Adds information of the given player to each event sent.
-	Only one user may be associated with a Scope at any given time. Calling this method will override the current user.
-	When no player is provided, any existing player information is removed.
-	
-	The `UserId`, `Name` and country-code of the player is sent.
-]=]
-function Scope:SetUser(Player: Player | number)
-	if typeof(Player) == "Instance" then
-		local IsLocal = (Player == PlayerService.LocalPlayer)
-		local LocaleId = (if IsLocal then LocalizationService.SystemLocaleId else Player.LocaleId)
-		local CountryCode = string.split(LocaleId, "-")[2]
-		
-		if CountryCode then
-			CountryCode = string.upper(CountryCode)
-		end
-		
-		self.user = {
-			id = Player.UserId,
-			username = Player.Name,
-			data = {
-				AccountAge = Player.AccountAge,
-				Character = (Player.Character ~= nil),
-				MembershipType = Player.MembershipType.Name,
-				Team = if Player.Team then tostring(Player.Team) else nil,
-			},
-			
-			geo = {
-				city = "Unknown",
-				country_code = CountryCode,
-				region = CountryCode,
-			},
-		}
-	elseif typeof(Player) == "number" then
-		self.user = {id = Player}
-	else
+function Scope.SetUser(self: Types.Scope, User: Player | number | nil, Identity: boolean?): ()
+	if User == nil then
 		self.user = nil
+
+		return
 	end
+
+	if type(User) == "number" then
+		self.user = { id = User }
+
+		return
+	end
+
+	local Subject = User :: Player
+
+	if not (if Identity ~= nil then Identity else IncludeIdentity) then
+		self.user = { id = Subject.UserId }
+
+		return
+	end
+
+	local LocaleId = (if Subject == Players.LocalPlayer then LocalizationService.SystemLocaleId else Subject.LocaleId)
+
+	local CountryCode = string.split(LocaleId, "-")[2]
+
+	if CountryCode ~= nil then CountryCode = string.upper(CountryCode) end
+
+	self.user = {
+		id = Subject.UserId,
+		username = Subject.Name,
+		data = {
+			AccountAge = Subject.AccountAge,
+			MembershipType = Subject.MembershipType.Name,
+			Team = (if Subject.Team then tostring(Subject.Team) else nil),
+		},
+		geo = {
+			city = "Unknown",
+			country_code = CountryCode,
+			region = CountryCode,
+		},
+	}
 end
 
-
---[=[
-]=]
-function Scope:SetExtra(Key: string, Value: Defaults.ValidJSONValues)
+function Scope.SetExtra(self: Types.Scope, Key: string, Value: any): ()
 	self.extra[Key] = Value
 end
 
---[=[
-]=]
-function Scope:SetExtras(Dictionary: {[string]: Defaults.ValidJSONValues})
+function Scope.SetExtras(self: Types.Scope, Dictionary: { [string]: any }): ()
 	for Key, Value in next, Dictionary do
 		self.extra[Key] = Value
 	end
 end
 
-
---[=[
-]=]
-function Scope:SetTag(Key: string, Value: Defaults.ValidJSONValues)
-	self.tags[Key] = Value
+function Scope.SetTag(self: Types.Scope, Key: string, Value: string | number | boolean): ()
+	self.tags[Key] = tostring(Value)
 end
 
---[=[
-]=]
-function Scope:SetTags(Dictionary: {[string]: Defaults.ValidJSONValues})
+function Scope.SetTags(self: Types.Scope, Dictionary: { [string]: string | number | boolean }): ()
 	for Key, Value in next, Dictionary do
-		self.tags[Key] = Value
+		self.tags[Key] = tostring(Value)
 	end
 end
 
-
---[=[
-]=]
-function Scope:SetContext(Key: string, Value: Defaults.ValidJSONValues)
+function Scope.SetContext(self: Types.Scope, Key: string, Value: { [string]: any }): ()
 	self.contexts[Key] = Value
 end
 
---[=[
-]=]
-function Scope:SetLevel(Level: Defaults.Level)
+function Scope.SetLevel(self: Types.Scope, Level: Types.Level): ()
 	self.level = Level
 end
 
---[=[
-]=]
-function Scope:SetTranSaction(TransactionName: string)
+function Scope.SetTransaction(self: Types.Scope, TransactionName: string): ()
 	self.transaction = TransactionName
 end
 
---[=[
-]=]
-function Scope:SetFingerprint(Fingerprint: {string})
+function Scope.SetFingerprint(self: Types.Scope, Fingerprint: { string }): ()
 	self.fingerprint = Fingerprint
 end
 
+function Scope.SetSession(self: Types.Scope, Session: Types.Session?): ()
+	self._session = Session
+end
 
---[=[
-	@param Processor (Event, Hint) -> (Event)
-]=]
-function Scope:AddEventProcessor(Processor)
+function Scope.AddEventProcessor(self: Types.Scope, Processor: Types.Processor): ()
 	table.insert(self._event_processors, Processor)
 end
 
+function Scope.Clear(self: Types.Scope): ()
+	local Fields = self :: { [any]: any }
+	local Kept: { [string]: any } = {}
 
---[=[
-]=]
-function Scope:Clear()
-	local EmptyScope = Scope.new()
-	
-	for Key, Value in next, self do
-		rawset(self, Key, rawget(EmptyScope, Key))
+	for _, Key in PreservedOnClear do
+		Kept[Key] = Fields[Key]
+	end
+
+	local Fresh = Scope.new()
+
+	for Key in next, Fields do
+		rawset(self, Key, nil)
+	end
+
+	for Key, Value in next, Fresh :: { [any]: any } do
+		rawset(self, Key, Value)
+	end
+
+	for Key, Value in next, Kept do
+		rawset(self, Key, Value)
 	end
 end
 
---[=[
-]=]
-function Scope:Clone()
-	return setmetatable(table.clone(self), Scope)
+function Scope.Clone(self: Types.Scope): Types.Scope
+	local Copy = Scope.new()
+
+	for Key, Value in next, self :: { [any]: any } do
+		rawset(Copy, Key, (if type(Value) == "table" then Table.DeepCopy(Value) else Value))
+	end
+
+	return Copy
 end
 
+function Scope.AddBreadcrumb(self: Types.Scope, Breadcrumb: Types.Breadcrumb, Hint: Types.Hint?): ()
+	if BreadcrumbFilter ~= nil then
+		local Success, Result = pcall(BreadcrumbFilter, Breadcrumb, Hint)
 
---[=[
-	@unreleased
-	@param Breadcrumb Breadcrumb
-]=]
-function Scope:AddBreadcrumb(Breadcrumb)
-	print([[WIP: The function "Scope:AddBreadcrumb" is not yet implemented.]])
+		if not Success or Result == nil then return end
+
+		Breadcrumb = Result
+	end
+
+	if Breadcrumb.timestamp == nil then
+		if table.isfrozen(Breadcrumb) then Breadcrumb = table.clone(Breadcrumb) end
+
+		Breadcrumb.timestamp = DateTime.now().UnixTimestampMillis / 1000
+	end
+
+	table.insert(self.breadcrumbs, Breadcrumb)
+
+	while #self.breadcrumbs > BreadcrumbLimit do
+		table.remove(self.breadcrumbs, 1)
+	end
 end
 
---[=[
-	@unreleased
-]=]
-function Scope:ClearBreadcrumbs()
-	print([[WIP: The function "Scope:ClearBreadcrumbs" is not yet implemented.]])
+function Scope.ClearBreadcrumbs(self: Types.Scope): ()
+	table.clear(self.breadcrumbs)
 end
 
+function Scope.ApplyToEvent(self: Types.Scope, Event: Types.Event, Hint: Types.Hint?): Types.Event?
+	local Fields = Event :: { [string]: any }
 
---[=[
-	@param Event Event
-	@param Hint Hint
-]=]
-function Scope:ApplyToEvent(Event: Defaults.Event, Hint): Defaults.Event
-	for Index, Value in self do
-		if typeof(Value) == "table" and typeof(Event[Index]) == "table" then
-			if Index == "exception" then
-				for ExceptionIndex, _ in Event.exception or {} do
-					Event.exception[ExceptionIndex] = Defaults:AggregateDictionaries(Event.exception[ExceptionIndex], Value)
-				end
-			else
-				Event[Index] = Defaults:AggregateDictionaries(Event[Index], Value)
-			end
+	for Key, Value in next, self :: { [any]: any } do
+		if string.sub(Key, 1, 1) == "_" then continue end
+
+		local Existing = Fields[Key]
+
+		if type(Value) == "table" then
+			Fields[Key] = if type(Existing) == "table" then Table.Merge(Existing, Value) else Table.DeepCopy(Value)
 		else
-			Event[Index] = Value
+			Fields[Key] = Value
 		end
 	end
-	
-	local EventProcessors = table.clone(Event._event_processors)
-	Event._event_processors = nil
-	
-	if #Event.contexts then
-		Event.contexts = nil
+
+	local Pipeline: { Types.Processor } = {}
+
+	for _, Processor in Processors.List() do
+		table.insert(Pipeline, Processor)
 	end
-	
-	if #Event.extra then
-		Event.extra = nil
+
+	for _, Processor in self._event_processors do
+		table.insert(Pipeline, Processor)
 	end
-	
-	for _, Processor in next, script:GetChildren() do
-		if Processor.Name ~= "GlobalEventProcessor" then continue end
-		if RunService:IsClient() and Processor:GetAttribute("RunContext") ~= Enum.RunContext.Client then continue end
-		if RunService:IsServer() and Processor:GetAttribute("RunContext") ~= Enum.RunContext.Server then continue end
-		
-		table.insert(EventProcessors, 1, function(...)
-			return Processor:Invoke(...)
-		end)
-	end
-	
-	for _, Processor in next, EventProcessors do
+
+	for _, Processor in Pipeline do
 		local Success, Response = pcall(Processor, Event, Hint)
-		
+
 		if Success then
+			if Response == nil then return nil end
+
 			Event = Response
-			
-			if not Event then
-				break
-			end
 		else
-			Event.errors = (Event.errors or {})
-			table.insert(Event.errors, {
+			local Errors: { Types.EventError } = Event.errors or {}
+
+			Event.errors = Errors
+
+			table.insert(Errors, {
 				type = "unknown_error",
 				details = "Encountered error when calling an EventProcessor.",
-				name = Response,
+				name = tostring(Response),
 			})
 		end
 	end
-	
-	
+
 	return Event
 end
 
-export type Scope = typeof(Scope.new())
-
-return table.freeze(Scope)
+return Scope

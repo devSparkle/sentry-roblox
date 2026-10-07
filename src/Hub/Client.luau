@@ -1,74 +1,104 @@
---!nocheck
---// Initialization
-
 local HttpService = game:GetService("HttpService")
 
-local Defaults = require(script.Parent.Parent:WaitForChild("Defaults"))
-local Transport = require(script.Parent.Parent:WaitForChild("Transport"))
+local Constants = require(script.Parent.Parent:WaitForChild("Constants"))
+local Types = require(script.Parent.Parent:WaitForChild("Types"))
+local Table = require(script.Parent.Parent:WaitForChild("Utility"):WaitForChild("Table"))
+local DefaultTransport = require(script.Parent.Parent:WaitForChild("Transport"))
 
---[=[
-	@class Client
-	
-	A Client is the part of the SDK that is responsible for event creation. To give
-	an example, the Client should convert an exception to a Sentry event.
-	
-	The Client should be stateless, it gets the Scope injected and delegates the
-	work of sending the event to the Transport.
-]=]
 local Client = {}
+local Metatable = { __index = Client }
 
---// Functions
+local FailureReported = false
 
-function Client.new()
-	return setmetatable({}, {__index = Client})
-end
+local function ReportFailure(Response: any): ()
+	if Response == nil or Response.Success ~= false then
+		FailureReported = false
 
---[=[
-	Captures the event by merging it with other data with defaults from the client.
-	
-	In addition, if a scope is passed to this system, the data from the scope
-	passes it to the internal transport.
-	
-	@param Event Event
-	@param Scope Scope
-]=]
-function Client:CaptureEvent(Event, Hint: {[string]: any}, Scope)
-	if not Hint then Hint = {} end
-	
-	Event.event_id = (Hint.event_id or string.gsub(HttpService:GenerateGUID(false), "-", ""))
-	Event.timestamp = DateTime.now().UnixTimestamp
-	Event.sdk = self.SDK_INTERFACE
-	Event.platform = "other"
-	Event = Scope:ApplyToEvent(Event, Hint)
-	
-	if not Event then
 		return
 	end
-	
-	local EncodeSuccess, EncodedPayload = pcall(HttpService.JSONEncode, HttpService, Event)
-	if not EncodeSuccess then return end
-	
-	return Transport:CaptureEvent(EncodedPayload)
+
+	if FailureReported then return end
+
+	FailureReported = true
+
+	local Body = tostring(Response.Body or "")
+
+	if #Body > 500 then Body = string.sub(Body, 1, 500) end
+
+	print(`[SentryRoblox] capture failed: {Response.StatusCode} {Response.StatusMessage} {Body}`)
 end
 
---[=[
-	Flushes out the queue for up to timeout seconds. If the client can guarantee
-	delivery of events only up to the current point in time this is preferred. This
-	might block for timeout seconds.
-	
-	The client is disabled after this method is called.
-]=]
-function Client:Close(Timeout: number?)
-	
+local EncodeFailureReported = false
+
+local function ReportEncodeFailure(Error: any): ()
+	if EncodeFailureReported then return end
+
+	EncodeFailureReported = true
+
+	print(`[SentryRoblox] dropping an event that could not be encoded: {tostring(Error)}`)
 end
 
---[=[
-	Same as close difference is that the client is NOT disposed after invocation.
-]=]
-function Client:Flush(Timeout: number?)
-	
+function Client.new(): Types.Client
+	return setmetatable({}, Metatable) :: any
 end
 
-export type Client = typeof(Client.new())
+function Client.CaptureEvent(
+	_Self: Types.Client,
+	Event: Types.Event,
+	Hint: Types.Hint?,
+	Scope: Types.Scope,
+	Options: Types.Options?
+): any
+	local ResolvedHint: Types.Hint = Hint or {}
 
-return table.freeze(Client)
+	if table.isfrozen(Event) then Event = table.clone(Event) end
+
+	Event.event_id = (ResolvedHint.event_id or string.gsub(HttpService:GenerateGUID(false), "-", ""))
+	Event.timestamp = DateTime.now().UnixTimestamp
+	Event.platform = "other"
+
+	local Processed = Scope:ApplyToEvent(Event, ResolvedHint)
+
+	if Processed == nil then return end
+
+	Processed.sdk = Constants.Interface
+
+	local BeforeSend = if Options ~= nil then Options.BeforeSend else nil
+
+	if BeforeSend ~= nil then
+		local Success, Result = pcall(BeforeSend, Processed, ResolvedHint)
+
+		if not Success or Result == nil then return end
+
+		Processed = Result
+	end
+
+	local EncodeSuccess, EncodedPayload = pcall(HttpService.JSONEncode, HttpService, Processed)
+
+	if not EncodeSuccess then
+		EncodeSuccess, EncodedPayload = pcall(HttpService.JSONEncode, HttpService, Table.Sanitize(Processed))
+	end
+
+	if not EncodeSuccess then
+		ReportEncodeFailure(EncodedPayload)
+
+		return
+	end
+
+	local Transport = if Options ~= nil and Options.Transport ~= nil then Options.Transport else DefaultTransport
+	local Response = Transport:CaptureEvent(EncodedPayload)
+
+	ReportFailure(Response)
+
+	return Response
+end
+
+function Client.Close(_Self: Types.Client, _Timeout: number?): boolean
+	return true
+end
+
+function Client.Flush(_Self: Types.Client, _Timeout: number?): boolean
+	return true
+end
+
+return Client
