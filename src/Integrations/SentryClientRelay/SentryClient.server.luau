@@ -1,23 +1,54 @@
---!nocheck
---// Initialization
+local RunService = game:GetService("RunService")
+local ScriptContext = game:GetService("ScriptContext")
+local LogService = game:GetService("LogService")
 
-local PlayerService = game:GetService("Players")
+local Policy = require(script.Parent.Parent.Detection.Policy)
 
-local RemoteEvent = script.Parent:WaitForChild("RemoteEvent")
-local SentrySDK = require(script.Parent.Parent.Parent)
+if not RunService:IsClient() then return end
 
---// Functions
+local Relay = script.Parent:WaitForChild("RemoteEvent", 30)
 
-for _, Integration in next, {"ScriptContextError", "LogServiceMessageOut", "StackProcessor"} do
-	require(script.Parent.Parent:WaitForChild(Integration)):SetupOnce(SentrySDK.Scope._AddGlobalEventProcessor, SentrySDK:GetCurrentHub())
+if Relay == nil then return end
+
+local LocationPrefix = "^[^:]+:%d+: (.+)$"
+local SelfPattern = "SentryRoblox"
+
+local function Forward(Event: any, TracebackText: string?): ()
+	pcall(function()
+		(Relay :: RemoteEvent):FireServer({
+			event = Event,
+			traceback = TracebackText,
+		})
+	end)
 end
 
-SentrySDK:ConfigureScope(function(Scope)
-	Scope.logger = "client"
-	Scope:SetUser(PlayerService.LocalPlayer)
-	Scope._AddGlobalEventProcessor(function(Event, Hint)
-		RemoteEvent:FireServer(Event, Hint)
-		
-		return nil
-	end)
+ScriptContext.Error:Connect(function(Message: string, TracebackText: string, Origin: any)
+	local Keep = Policy.Decide(Origin, TracebackText, game)
+
+	if not Keep then return end
+
+	Forward({
+		exception = {
+			{
+				type = "Error",
+				value = string.match(Message, LocationPrefix) or Message,
+			},
+		},
+	}, TracebackText)
+end)
+
+LogService.MessageOut:Connect(function(Message: string, MessageType: Enum.MessageType)
+	if MessageType ~= Enum.MessageType.MessageWarning then return end
+
+	if string.find(Message, SelfPattern, 1, true) ~= nil then return end
+
+	if Policy.IsInternalText(Message) then return end
+
+	Forward({
+		message = {
+			message = Message,
+			formatted = Message,
+		},
+		level = "warning",
+	})
 end)
