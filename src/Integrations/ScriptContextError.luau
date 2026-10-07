@@ -1,37 +1,69 @@
---!nocheck
---// Initialization
+local Policy = require(script.Parent.Detection.Policy)
+local Types = require(script.Parent:WaitForChild("Types"))
 
-local ScriptContext = game:GetService("ScriptContext")
+export type Options = {
+	Filter: any?,
+	ExtraInternalPatterns: { string }?,
+	RejectTraceless: boolean?,
+}
 
-local Module = {}
-Module.Name = script.Name
+local LocationPrefix = "^[^:]+:%d+: (.+)$"
 
---// Functions
+local function ScriptContextError(Options: Options?): Types.Integration
+	local Settings: Options = Options or {}
 
-function Module:SetupOnce(AddGlobalEventProcessor, CurrentHub)
-	local Hub = CurrentHub:Clone()
-	
-	Hub:ConfigureScope(function(Scope)
-		Scope.exception = Scope.exception or {}
-		Scope.exception.mechanism = Scope.exception.mechanism or {}
-		
-		Scope.exception.mechanism.type = "scriptcontext.error"
-		Scope.exception.mechanism.handled = false
-	end)
-	
-	ScriptContext.Error:Connect(function(Message, StackTrace, Origin)
-		Message = (string.match(Message, ":%d+: (.+)") or Message)
-		
-		Hub:CaptureEvent({
-			exception = {{
-				type = Message,
-			}},
-		}, {
-			message = Message,
-			traceback = StackTrace,
-			origin = Origin,
-		})
-	end)
+	return {
+		Name = "ScriptContextError",
+		Realm = "Shared",
+		Setup = function(Context: Types.Context)
+			local ScriptContext = Context.Services.ScriptContext
+			local Root = Context.Services.Game
+
+			local Filter = table.clone(Policy.Defaults)
+
+			if Settings.Filter ~= nil then
+				for Key, Value in Settings.Filter do
+					Filter[Key] = Value
+				end
+			end
+
+			if Settings.RejectTraceless ~= nil then Filter.RejectTraceless = Settings.RejectTraceless end
+
+			local ExtraPatterns = Settings.ExtraInternalPatterns
+
+			local Connection = ScriptContext.Error:Connect(function(Message: string, TracebackText: string, Origin: any)
+				if ExtraPatterns ~= nil and Policy.MatchesAny(Message, ExtraPatterns) then return end
+
+				local Keep = Policy.Decide(Origin, TracebackText, Root, Filter)
+
+				if not Keep then return end
+
+				local Clean = string.match(Message, LocationPrefix) or Message
+
+				Context.Hub:CaptureEvent({
+					level = "error",
+					exception = {
+						{
+							type = "Error",
+							value = Clean,
+							mechanism = {
+								type = "generic",
+								handled = false,
+							},
+						},
+					},
+				}, {
+					traceback = TracebackText,
+					origin = Origin,
+					message = Message,
+				})
+			end)
+
+			return function()
+				Connection:Disconnect()
+			end
+		end,
+	}
 end
 
-return Module
+return ScriptContextError

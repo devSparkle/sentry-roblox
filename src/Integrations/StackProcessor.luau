@@ -1,105 +1,131 @@
---!nocheck
---// Initialization
+local Policy = require(script.Parent.Detection.Policy)
+local Traceback = require(script.Parent.Detection.Traceback)
+local Types = require(script.Parent:WaitForChild("Types"))
 
-local Module = {}
-Module.Name = script.Name
+export type Options = {
+	IncludeInternalFrames: boolean?,
+	MaximumFrames: number?,
+	IgnoredFunctions: { string }?,
+}
 
---// Functions
+local DefaultIgnoredFunctions = {
+	"CaptureException",
+	"CaptureEvent",
+	"CaptureMessage",
+}
 
-local function SanitizeEnvironment(Environment)
-	if not Environment then return end
-	local SanitizedEnvironment = {}
-	
-	for Index, Value in next, Environment do
-		SanitizedEnvironment[tostring(Index)] = tonumber(Value) or tostring(Value)
+local function ToFrame(Parsed: Traceback.Frame, IsInApp: (string?) -> boolean): any
+	local Path = Parsed.Path
+	local Module = nil
+
+	if Path ~= nil then
+		local Segments = string.split(Path, ".")
+
+		Module = Segments[#Segments]
 	end
-	
-	return SanitizedEnvironment
+
+	return {
+		filename = Path,
+		lineno = Parsed.Line,
+		["function"] = Parsed.Function,
+		module = Module,
+		raw = Parsed.Raw,
+		in_app = IsInApp(Path),
+	}
 end
 
-local function ConvertStacktraceToFrames(Event, Hint)
-	if not Hint then return Event end
-	if not Hint.traceback then return Event end
-	
-	local StacktraceFrames = {}
-	local Index = 0
-	
-	for Line in string.gmatch(Hint.traceback, "[^\n\r]+") do
-		if string.match(Line, "^Stack Begin$") then continue end
-		if string.match(Line, "^Stack End$") then continue end
-		Index += 1
-		
-		local Path, LineNumber, FunctionName
-		local Variables = (if Hint.environments then Hint.environments[Index] else nil)
-		local SourceScript = (if Variables then Variables.script else nil)
-		
-		if string.find(Line, "^Script ") then
-			Path, LineNumber, FunctionName = string.match(
-				Line, "^Script '(.-)', Line (%d+)%s?%-?%s?(.*)$"
-			)
-		elseif string.find(Line, ", line") then
-			Path, LineNumber, FunctionName = string.match(
-				Line, "^(.-), line (%d+)%s?%-?%s?(.*)$"
-			)
-		else
-			Path, LineNumber, FunctionName = string.match(
-				Line, "^(.-):(%d+)%s?%-?%s?(.*)$"
-			)
-		end
-		
-		if FunctionName then
-			FunctionName = string.gsub(FunctionName, "function ", "")
-			
-			if FunctionName == "CaptureException" then
-				continue
+local function StackProcessor(Options: Options?): Types.Integration
+	local Settings: Options = Options or {}
+	local Ignored = Settings.IgnoredFunctions or DefaultIgnoredFunctions
+	local MaximumFrames = Settings.MaximumFrames or 100
+	local IncludeInternalFrames = Settings.IncludeInternalFrames == true
+
+	return {
+		Name = "StackProcessor",
+		Realm = "Shared",
+		Setup = function(Context: Types.Context)
+			local SdkOptions = Context.Options
+			local Include = if SdkOptions ~= nil then SdkOptions.InAppInclude else nil
+			local Exclude = if SdkOptions ~= nil then SdkOptions.InAppExclude else nil
+
+			local function IsInApp(Path: string?): boolean
+				if Exclude ~= nil and Policy.MentionsAny(Path, Exclude) then return false end
+
+				if Include ~= nil and #Include > 0 then return Policy.MentionsAny(Path, Include) end
+
+				return not Policy.IsInternalText(Path)
 			end
-		end
-		
-		if Path and LineNumber then
-			table.insert(StacktraceFrames, 1, {
-				["function"] = FunctionName,
-				filename = Path,
-				
-				lineno = tonumber(LineNumber),
-				module = (if SourceScript then SourceScript.Name else select(-1, unpack(string.split(Path, ".")))),
-				vars = SanitizeEnvironment(Variables)
-			})
-		else
-			table.insert(StacktraceFrames, 1, {
-				filename = (if SourceScript then SourceScript:GetFullName() else nil),
-				module = Line,
-				vars = SanitizeEnvironment(Variables)
-			})
-		end
-	end
-	
-	if #StacktraceFrames > 0 then
-		if Event.exception then
-			Event.exception.stacktrace = {
-				frames = StacktraceFrames,
-			}
-		elseif Hint.thread then
-			Event.threads = Event.threads or {}
-			table.insert(Event.threads, 1, {
-				id = string.gsub(tostring(Hint.thread), "thread: ", ""),
-				stacktrace = {
-					frames = StacktraceFrames
-				},
-			})
-		end
-	else
-		Event.errors = Event.errors or {}
-		table.insert(Event.errors, {
-			type = "native_symbolicator_failed",
-			details = "Failed to process native stacktraces.",
-		})
-	end
-	
-	return Event
+
+			local SdkRoot = script.Parent.Parent:GetFullName()
+
+			local function IsSdkFrame(Path: string?): boolean
+				if Path == nil then return false end
+
+				return string.sub(Path, 1, #SdkRoot) == SdkRoot
+			end
+
+			local function Convert(Event: any, Hint: any?): any
+				if Hint == nil then return Event end
+
+				local Text = Hint.traceback
+
+				if Text == nil then return Event end
+
+				local Frames = {}
+				local Unfiltered = {}
+
+				for _, Parsed in Traceback.Parse(Text) do
+					if Parsed.Function ~= nil and table.find(Ignored, Parsed.Function) ~= nil then continue end
+
+					if not IncludeInternalFrames and Parsed.Path ~= nil and Policy.IsInternalText(Parsed.Path) then
+						continue
+					end
+
+					if Parsed.Path == nil and Parsed.Line == nil and #Unfiltered > 0 then continue end
+
+					local Frame = ToFrame(Parsed, IsInApp)
+
+					table.insert(Unfiltered, 1, Frame)
+
+					if not IsSdkFrame(Parsed.Path) then table.insert(Frames, 1, Frame) end
+				end
+
+				if #Frames == 0 then Frames = Unfiltered end
+
+				while #Frames > MaximumFrames do
+					table.remove(Frames)
+				end
+
+				if #Frames == 0 then
+					Event.errors = Event.errors or {}
+					table.insert(Event.errors, {
+						type = "native_symbolicator_failed",
+						details = "No stack frames could be parsed from the traceback.",
+					})
+
+					return Event
+				end
+
+				if Event.exception ~= nil and Event.exception[1] ~= nil then
+					Event.exception[1].stacktrace = { frames = Frames }
+				elseif Hint.thread ~= nil then
+					Event.threads = Event.threads or {}
+					table.insert(Event.threads, 1, {
+						id = tostring(Hint.thread_id),
+						stacktrace = { frames = Frames },
+					})
+				else
+					Event.stacktrace = { frames = Frames }
+				end
+
+				return Event
+			end
+
+			Context.AddProcessor(Convert)
+
+			return nil
+		end,
+	}
 end
 
-function Module:SetupOnce(AddGlobalEventProcessor, CurrentHub)
-	AddGlobalEventProcessor(ConvertStacktraceToFrames)
-end
-
-return Module
+return StackProcessor
