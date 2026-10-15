@@ -19,6 +19,12 @@ local Utils = require(script.Parent.Utils)
 	known as async local or context local).
 ]=]
 local Hub = {}
+
+--[=[
+	@class Logger
+
+	Sends Sentry structured logs. Accessed through `Hub.Logger`.
+]=]
 local Logger = {}
 
 --// Functions
@@ -76,39 +82,39 @@ end
 
 
 --[=[
-  @param body string or Logger.fmt content
-  @param attribute any key/value (string, number, or bool)
+  @param Body string or Logger.fmt content
+  @param Attribute any key/value (string, number, or bool)
 ]=]
 function Logger:Debug(Body: string | Defaults.LogParamFormat, Attribute: {[string]: any}?)
 	return self:CaptureLog(Body, "debug", Attribute);
 end
 
 --[=[
-  @param body string or Logger.fmt content
-  @param attribute any key/value (string, number, or bool)
+  @param Body string or Logger.fmt content
+  @param Attribute any key/value (string, number, or bool)
 ]=]
 function Logger:Info(Body: string | Defaults.LogParamFormat, Attribute: {[string]: any}?)
 	return self:CaptureLog(Body, "info", Attribute);
 end
 
 --[=[
-  @param body string or Logger.fmt content
-  @param attribute any key/value (string, number, or bool)
+  @param Body string or Logger.fmt content
+  @param Attribute any key/value (string, number, or bool)
 ]=]
 function Logger:Warn(Body: string | Defaults.LogParamFormat, Attribute: {[string]: any}?)
 	return self:CaptureLog(Body, "warn", Attribute);
 end
 
 --[=[
-  @param body string or Logger.fmt content
-  @param attribute any key/value (string, number, or bool)
+  @param Body string or Logger.fmt content
+  @param Attribute any key/value (string, number, or bool)
 ]=]
 function Logger:Error(Body: string | Defaults.LogParamFormat, Attribute: {[string]: any}?)
 	return self:CaptureLog(Body, "error", Attribute);
 end
 
 --[=[
-	@param template 'string.format' text template
+	@param Template 'string.format' text template
 	@param ... 'string.format' parameters to complete the template
 ]=]
 function Logger:fmt(Template: string, ...: string): Defaults.LogParamFormat
@@ -119,9 +125,9 @@ function Logger:fmt(Template: string, ...: string): Defaults.LogParamFormat
 end
 
 --[=[
-  @param body string or Logger.fmt content
-  @param attributes custom log metadata (key/value)
-  @param level level
+  @param Body string or Logger.fmt content
+  @param Attributes custom log metadata (key/value)
+  @param Level level
 ]=]
 function Logger:CaptureLog(Body: string | Defaults.LogParamFormat, Level: Defaults.Level, Attributes: {[string]: any}?)
 	if not Body then return; end
@@ -178,7 +184,9 @@ end
 
 --[=[
 	This is internal method. Please use the Hub.Logger table to send sentry formatted log
-	or customize LogServiceMessageOut integration instead 
+	or customize LogServiceMessageOut integration instead
+
+	@param payload StructLog
 ]=]
 function Hub:_CaptureLog(payload)
 	if self.Options and self.Options.BeforeSendLog then
