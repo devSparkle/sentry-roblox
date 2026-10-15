@@ -2,3 +2,5 @@ rbxlx-to-rojo.log
 *.rbxm
 
 sourcemap.json
+
+build/**

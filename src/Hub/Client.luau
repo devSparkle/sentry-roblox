@@ -76,6 +76,8 @@ end
 
 --[=[
   Handles incoming events from hub and allow custom levels/scopes if needed
+
+  @param Scope Scope
 ]=]
 function Client:CaptureLog(LogPayload: Defaults.StructLog, Scope)
 	LogPayload["trace_id"] = string.gsub(HttpService:GenerateGUID(false), "-", "");
